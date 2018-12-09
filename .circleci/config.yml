@@ -18,10 +18,10 @@ jobs:
           key: m68k-cache-{{ .Branch }}-{{ checksum ".circleci/DATESTAMP" }}
           paths:
             - .build-m68k
-      - run: './toolchain-m68k --quiet build'
-      - save_cache:
-          key: m68k-amigaos-{{ .Branch }}-{{ .Revision }}
-          paths: m68k-amigaos
+      - run: './toolchain-m68k --quiet build --prefix=/opt/amiga'
+      - run: 'tar cvzf demoscene-toolchain.tar.gz /opt/amiga'
+      - store_artifacts:
+          path: demoscene-toolchain.tar.gz
 
 workflows:
   version: 2

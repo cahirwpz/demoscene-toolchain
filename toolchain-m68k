@@ -48,6 +48,19 @@ def prepare_target():
           'ndk/lib', 'ndk/lib/fd', 'ndk/lib/sfd')
 
 
+@recipe('vasm-install')
+def install_vasm():
+  info('installing vasm')
+
+  copy('{build}/vasm/vasmm68k_mot', '{prefix}/{target}/bin')
+  vasm = textfile(
+    '#!/bin/sh',
+    '',
+    '{prefix}/{target}/bin/vasmm68k_mot -I{prefix}/{target}/ndk/include "$@"')
+  chmod(vasm, 0755)
+  move(vasm, '{prefix}/bin/vasm')
+
+
 @recipe('{NDK}-install')
 def install_ndk():
   info('installing ndk')
@@ -247,6 +260,7 @@ def build():
 
   unpack('vasm', work_dir='{build}')
   make('vasm', CPU='m68k', SYNTAX='mot')
+  install_vasm()
 
   update_autotools('{submodules}/fd2sfd')
   unpack('fd2sfd', work_dir='{build}')

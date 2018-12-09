@@ -9,5 +9,4 @@
 .build-*/
 m68k-amigaos/
 m68k-elf/
-ppc-amigaos/
 tmp/

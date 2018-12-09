@@ -1,18 +1,15 @@
-AmigaOS cross compiler for Linux / MacOSX / Windows
+AmigaOS m68k compiler for use with my demoscene project
 ===
 
-##### It took me countless hours to put this fragile software together. The time I can spend to develop this project is limited. If you want binary builds, better support for Windows or any other [feature](https://github.com/cahirwpz/amigaos-cross-toolchain/wiki/TODO), please incentivize me by leaving a tip. 
-
-[![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=47CV5JMRW9BRA)
-[![Build Status](https://circleci.com/gh/cahirwpz/amigaos-cross-toolchain.svg?&style=shield)](https://circleci.com/gh/cahirwpz/amigaos-cross-toolchain)
+[![Build Status](https://circleci.com/gh/cahirwpz/demoscene-toolchain.svg?&style=shield)](https://circleci.com/gh/cahirwpz/demoscene-toolchain)
 
 **Author:** [Krystian Bacławski](mailto:krystian.baclawski@gmail.com)
 
-**Short description:** Cross toolchain build script for AmigaOS m68k and ppc targets. Supported host platforms are Linux, MacOSX and Windows (with [MSYS2](https://msys2.github.io/)).
+**Short description:** Cross toolchain build script for AmigaOS m68k targets. Supported host platforms are Linux and MacOSX.
 
 ### Overview
 
-**amigaos-cross-toolchain** project provides an easy way to build AmigaOS 3.x (m68k) and ppc AmigaOS 4.x (ppc) target toolchain in a Unix-like environment.
+**demoscene-toolchain** project provides an easy way to build AmigaOS 3.x (m68k) target toolchain in a Unix-like environment.
 
 Build process should produce following set of tools for **m68k-amigaos** target:
 
@@ -29,25 +26,12 @@ Build process should produce following set of tools for **m68k-amigaos** target:
  * vda68k: portable M68k disassembler for 68000-68060, 68851, 68881, 68882
  * [amitools](https://github.com/cnvogelg/amitools/blob/master/README.md#contents) with [vamos](https://github.com/cnvogelg/amitools/blob/master/doc/vamos.md) AmigaOS emulator which is proven to run SAS/C
 
-... and following set of tools for **ppc-amigaos** target:
-
- * gcc 4.2.4
- * g++ 4.2.4
- * binutils 2.18 (assembler, linker, etc.)
- * newlib
- * clib 2.2
- * AmigaOS headers & libraries & autodocs (for AmigaOS 4.1)
-
-**Note:** *Patches are welcome!*
-
 ### Downloads
 
 There are no binary downloads provided for the time being. I do as much as possible to make the toolchain portable among Unix-like environments. Following platforms were tested and the toolchain is known to work for them:
 
- * Windows 7 SP1 32-bit (MSYS2 2.6.0, gcc 5.3.0)
- * Ubuntu 16.04 LTS 32-bit (gcc 5.4.0)
- * Ubuntu 16.04 LTS 64-bit (gcc 5.4.0) *Requires gcc-multilib package, and i386 libraries!*
- * MacOS X 10.9.5 (MacPorts - Apple's clang-600.0.57)
+ * Debian 9.6.0 64-bit *Requires gcc-multilib package, and i386 libraries!*
+ * MacOS X 10.12.4 (MacPorts - Apple's clang-900.0.39.2)
  
 ### Documentation
 
@@ -73,7 +57,7 @@ AmigaOS specific documents:
 
 You have to have following packages installed in your system:
 
- * GNU gcc 5.x **32-bit version!** or Clang
+ * GNU gcc 6.x **32-bit version!** or Clang
  * Python 2.7.x
  * libncurses-dev
  * python-dev 2.7
@@ -92,38 +76,15 @@ You have to have following packages installed in your system:
 
 Follow steps listed below:
 
-1. Fetch *amigaos-cross-toolchain* project to your local drive:  
+1. Fetch *demoscene-toolchain* project to your local drive:  
 
 ```
-    # git clone git://github.com/cahirwpz/amigaos-cross-toolchain.git
-    # cd amigaos-cross-toolchain
+    # git clone git://github.com/cahirwpz/demoscene-toolchain.git
+    # cd demoscene-toolchain
 ```
 
-2. Run `toolchain-m68k` or `toolchain-ppc` script (with `--prefix` option to specify where to install the toolchain). Note, that the destination directory must be writable by the user. 
+2. Run `toolchain-m68k` script (with `--prefix` option to specify where to install the toolchain). Note, that the destination directory must be writable by the user. 
 
 ```
     # ./toolchain-m68k --prefix=/opt/m68k-amigaos build
-```
-
-3. Wait for the result :-)
-
-4. *(optional)* Install additional SDKs (e.g. AHI, CyberGraphX, Magic User Interface, etc.):
-
-```
-    # ./toolchain-m68k --prefix=/opt/m68k-amigaos install-sdk ahi cgx mui
-```
-
-#### What if something goes wrong?
-
-If the build process fails, please write me an e-mail.  I'll try to help out. Don't forget to put into e-mail as much data about your environment as possible! 
-It's **vitally important** to send me a full log from build process. You can capture it by redirecting output to a file with following command:
-
-```
-    # ./toolchain-m68k build 2>&1 | tee build.log
-```
-
-... but remember to cleanup your build environment beforehand with:
-
-```
-    # rm -rf .build-m68k
 ```

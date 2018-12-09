@@ -1,24 +1,82 @@
-#!/usr/bin/python -B
+#!/usr/bin/env python2.7 -B
 
 # Build development cross toolchain for m68k-elf target.
 
 from fnmatch import fnmatch
+from logging import info, getLogger
 from os import environ
 import argparse
 import logging
 import platform
+import sys
 
 URLS = \
-  ['https://ftp.gnu.org/gnu/gmp/gmp-5.1.3.tar.bz2',
-   'https://ftp.gnu.org/gnu/mpc/mpc-1.0.3.tar.gz',
-   'https://ftp.gnu.org/gnu/mpfr/mpfr-3.1.3.tar.bz2',
-   'http://isl.gforge.inria.fr/isl-0.12.2.tar.bz2',
-   'http://www.bastoul.net/cloog/pages/download/cloog-0.18.4.tar.gz',
-   'git://sourceware.org/git/binutils',
-   'git://gcc.gnu.org/git/gcc']
+  ['https://ftp.gnu.org/gnu/gmp/gmp-6.1.2.tar.bz2',
+   'https://ftp.gnu.org/gnu/mpc/mpc-1.1.0.tar.gz',
+   'https://ftp.gnu.org/gnu/mpfr/mpfr-4.0.1.tar.bz2',
+   'http://isl.gforge.inria.fr/isl-0.19.tar.bz2',
+   'https://ftp.gnu.org/gnu/automake/automake-1.15.tar.gz',
+   ('http://www.haage-partner.de/download/AmigaOS/NDK39.lha', 'NDK_3.9.lha'),
+   'ftp://sourceware.org/pub/binutils/releases/binutils-2.31.tar.gz',
+   'ftp://sourceware.org/pub/gcc/releases/gcc-8.2.0/gcc-8.2.0.tar.gz']
 
 
 from common import * # NOQA
+
+
+@recipe('target-prepare')
+def prepare_target():
+  info('preparing target')
+
+  with cwd('{prefix}/{target}'):
+    mkdir('include/inline', 'include/lvo', 'lib', 'lib/fd', 'lib/sfd', 'doc')
+
+
+@recipe('fd2sfd-install')
+def install_fd2sfd():
+  info('installing fd2sfd')
+
+  copy('{build}/fd2sfd/fd2sfd', '{prefix}/bin')
+  copy('{build}/fd2sfd/cross/share/m68k-amigaos/alib.h',
+       '{prefix}/{target}/include/inline')
+
+
+@recipe('fd2pragma-install')
+def install_fd2pragma():
+  info('installing fd2pragma')
+
+  copy('{build}/fd2pragma/fd2pragma', '{prefix}/bin')
+  for header in ['macros.h', 'stubs.h']:
+      copy(path.join('{build}/fd2pragma/Include/inline', header),
+           '{prefix}/{target}/include/inline')
+
+
+@recipe('{NDK}-install')
+def install_ndk():
+  info('installing ndk')
+
+  copytree('{sources}/{NDK}/Include/include_h', '{prefix}/{target}/include')
+  copytree('{sources}/{NDK}/Include/include_i', '{prefix}/{target}/include')
+  copytree('{sources}/{NDK}/Include/fd', '{prefix}/{target}/lib/fd')
+  copytree('{sources}/{NDK}/Include/sfd', '{prefix}/{target}/lib/sfd')
+  copytree('{sources}/{NDK}/Include/linker_libs', '{prefix}/{target}/lib',
+           exclude=['README'])
+  copytree('{sources}/{NDK}/Documentation/Autodocs', '{prefix}/{target}/doc')
+
+  for name in find('{prefix}/{target}/lib/sfd', include=['*.sfd']):
+    base = path.basename(name).split('_')[0]
+
+    execute('sfdc', '--target=m68k-amigaos', '--mode=proto',
+            '--output={prefix}/{target}/include/proto/%s.h' % base, name)
+    execute('sfdc', '--target=m68k-amigaos', '--mode=macros',
+            '--output={prefix}/{target}/include/inline/%s.h' % base, name)
+    execute('sfdc', '--target=m68k-amigaos', '--mode=lvo',
+            '--output={prefix}/{target}/include/lvo/%s_lib.i' % base, name)
+
+
+def update_autotools(dst):
+  copy('{sources}/{automake}/lib/config.guess', path.join(dst, 'config.guess'))
+  copy('{sources}/{automake}/lib/config.sub', path.join(dst, 'config.sub'))
 
 
 def build():
@@ -29,6 +87,8 @@ def build():
   environ['PATH'] = '/usr/bin:/bin'
   environ['LANG'] = 'C'
   environ['TERM'] = 'xterm'
+
+  add_site_dir('{prefix}')
 
   if platform.system() == 'Darwin':
     cc, cxx = 'clang', 'clang++'
@@ -43,7 +103,7 @@ def build():
   find_executable('make')
   find_executable('git')
 
-  environ['PATH'] = ":".join([path.join('{target}', 'bin'),
+  environ['PATH'] = ":".join([path.join('{prefix}', 'bin'),
                               path.join('{host}', 'bin'),
                               environ['PATH']])
 
@@ -55,11 +115,20 @@ def build():
         name = path.basename(url)
       fetch(name, url)
 
+  py_ver = 'python%d.%d' % (sys.version_info.major, sys.version_info.minor)
+  require_header([path.join(py_ver, 'Python.h')],
+                 lang='c', errmsg='python-dev package missing')
+
+  execute('git', 'submodule', 'init', 'submodules/python-lhafile')
+  execute('git', 'submodule', 'update', 'submodules/python-lhafile')
+  unpack('python-lha', work_dir='{build}')
+  pysetup('python-lha')
+
   unpack('{gmp}')
   configure('{gmp}',
             '--disable-shared',
             '--prefix={host}')
-  make('{gmp}')
+  make('{gmp}', parallel=True)
   make('{gmp}', 'install')
 
   unpack('{mpfr}')
@@ -67,7 +136,7 @@ def build():
             '--disable-shared',
             '--prefix={host}',
             '--with-gmp={host}')
-  make('{mpfr}')
+  make('{mpfr}', parallel=True)
   make('{mpfr}', 'install')
 
   unpack('{mpc}')
@@ -76,7 +145,7 @@ def build():
             '--prefix={host}',
             '--with-gmp={host}',
             '--with-mpfr={host}')
-  make('{mpc}')
+  make('{mpc}', parallel=True)
   make('{mpc}', 'install')
 
   unpack('{isl}')
@@ -84,46 +153,65 @@ def build():
             '--disable-shared',
             '--prefix={host}',
             '--with-gmp-prefix={host}')
-  make('{isl}')
+  make('{isl}', parallel=True)
   make('{isl}', 'install')
 
-  unpack('{cloog}')
-  configure('{cloog}',
-            '--disable-shared',
-            '--prefix={host}',
-            '--with-isl=system',
-            '--with-gmp-prefix={host}',
-            '--with-isl-prefix={host}')
-  make('{cloog}')
-  make('{cloog}', 'install')
+  prepare_target()
 
+  unpack('{automake}')
+
+  update_autotools('{submodules}/fd2sfd')
+  unpack('fd2sfd', work_dir='{build}')
+  patch('fd2sfd', work_dir='{build}')
+  configure('fd2sfd', '--prefix={prefix}', from_dir='{build}/fd2sfd')
+  make('fd2sfd')
+  install_fd2sfd()
+
+  unpack('fd2pragma', work_dir='{build}')
+  patch('fd2pragma', work_dir='{build}')
+  make('fd2pragma')
+  install_fd2pragma()
+
+  unpack('sfdc')
+  patch('sfdc')
+  configure('sfdc', '--prefix={prefix}', copy_source=True)
+  make('sfdc')
+  make('sfdc', 'install')
+
+  unpack('{NDK}')
+  patch('{NDK}')
+  install_ndk()
+
+  unpack('{binutils}')
   with env(CFLAGS='-Wno-error'):
-    configure('binutils',
-              '--prefix={target}',
+    configure('{binutils}',
+              '--prefix={prefix}',
+              '--target={target}',
               '--with-isl={host}',
-              '--target=m68k-elf',
-              from_dir='{archives}/binutils')
-    make('binutils')
-    make('binutils', 'install')
+              from_dir='{sources}/{binutils}')
+    make('{binutils}', parallel=True)
+    make('{binutils}', 'install')
 
-    configure('gcc',
-              '--target=m68k-elf',
+    unpack('{gcc}')
+    configure('{gcc}',
+              '--prefix={prefix}',
+              '--target={target}',
               '--with-gmp={host}',
               '--with-mpfr={host}',
               '--with-isl={host}',
-              '--with-cloog={host}',
-              '--prefix={target}',
               '--enable-languages=c',
               '--without-headers',
-              from_dir='{archives}/gcc')
-    make('gcc', 'all-gcc')
-    make('gcc', 'install-gcc')
+              from_dir='{sources}/{gcc}')
+    make('{gcc}', 'all-gcc')
+    make('{gcc}', 'install-gcc')
 
 
 def clean():
   rmtree('{stamps}')
+  rmtree('{sources}')
   rmtree('{host}')
   rmtree('{build}')
+  rmtree('{tmpdir}')
 
 
 if __name__ == "__main__":
@@ -132,40 +220,57 @@ if __name__ == "__main__":
   if not sys.version_info[:2] == (2, 7):
     panic('I need Python 2.7 to run!')
 
-  if not (platform.system() in ['Darwin', 'Linux'] or
-          fnmatch(platform.system(), 'CYGWIN*')):
+  if not any(fnmatch(platform.system(), pat)
+             for pat in ['Darwin', 'Linux', 'CYGWIN_NT*', 'MSYS_NT*']):
     panic('Build on %s not supported!', platform.system())
 
   if platform.machine() not in ['i686', 'x86_64']:
     panic('Build on %s architecture not supported!', platform.machine())
 
   parser = argparse.ArgumentParser(description='Build cross toolchain.')
-  parser.add_argument('action', choices=['build', 'clean'], default='build',
-                      help='perform action')
+  parser.add_argument('action',
+                      choices=['build', 'clean', 'download'],
+                      default='build', help='perform action')
+  parser.add_argument('args', metavar='ARGS', type=str, nargs='*',
+                      help='action arguments')
+  parser.add_argument('-q', '--quiet', action='store_true')
   parser.add_argument('--prefix', type=str, default=None,
                       help='installation directory')
   args = parser.parse_args()
 
-  setvar(top=path.abspath('.'))
+  setvar(top=path.abspath(path.dirname(sys.argv[0])),
+         py_ver='python%d.%d' % (sys.version_info.major, sys.version_info.minor))
 
-  setvar(gmp='gmp-5.1.3',
-         mpfr='mpfr-3.1.3',
-         mpc='mpc-1.0.3',
-         isl='isl-0.12.2',
+  setvar(gmp='gmp-6.1.2',
+         mpfr='mpfr-4.0.1',
+         mpc='mpc-1.1.0',
+         isl='isl-0.19',
          cloog='cloog-0.18.4',
+         automake='automake-1.15',
+         binutils='binutils-2.31',
+         gcc='gcc-8.2.0',
+         NDK='NDK_3.9',
+         target='m68k-elf',
+         python=sys.executable,
+         sitedir=path.join('lib', '{py_ver}', 'site-packages'),
          patches=path.join('{top}', 'patches'),
          stamps=path.join('{top}', '.build-dev', 'stamps'),
          build=path.join('{top}', '.build-dev', 'build'),
          sources=path.join('{top}', '.build-dev', 'sources'),
          host=path.join('{top}', '.build-dev', 'host'),
          tmpdir=path.join('{top}', '.build-dev', 'tmp'),
-         target=path.join('{top}', 'm68k-elf'),
-         archives=path.join('{top}', '.build-dev', 'archives'))
+         prefix=path.join('{top}', 'm68k-elf'),
+         archives=path.join('{top}', '.build-dev', 'archives'),
+         submodules=path.join('{top}', 'submodules'))
+
+  if args.quiet:
+    getLogger().setLevel(logging.INFO)
 
   if args.prefix is not None:
-    setvar(target=args.prefix)
+    setvar(prefix=args.prefix)
 
-  if not path.exists('{target}'):
-    mkdir('{target}')
+  if not path.exists('{prefix}'):
+    mkdir('{prefix}')
 
-  eval(args.action + "()")
+  action = args.action.replace('-', '_')
+  globals()[action].__call__(*args.args)

@@ -3,7 +3,7 @@ version: 2
 defaults: &defaults
   working_directory: ~/demoscene-toolchain
   docker:
-    - image: cahirwpz/amigaos-cross-toolchain-buildenv:latest
+    - image: cahirwpz/demoscene-toolchain-buildenv:latest
 
 jobs:
   m68k:
@@ -18,8 +18,8 @@ jobs:
           key: m68k-cache-{{ .Branch }}-{{ checksum ".circleci/DATESTAMP" }}
           paths:
             - .build-m68k
-      - run: './toolchain-m68k --quiet build --prefix=/opt/amiga'
-      - run: 'tar cvzf demoscene-toolchain.tar.gz /opt/amiga'
+      - run: './toolchain-m68k --quiet build --prefix=/usr/local'
+      - run: 'tar cvzf demoscene-toolchain.tar.gz /usr/local'
       - store_artifacts:
           path: demoscene-toolchain.tar.gz
 

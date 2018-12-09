@@ -1,9 +1,9 @@
 # To build and publish image run following commands:
-# > docker build -t cahirwpz/amigaos-cross-toolchain-buildenv:latest .
+# > docker build -t cahirwpz/demoscene-toolchain-buildenv:latest .
 # > docker login
-# > docker push cahirwpz/amigaos-cross-toolchain-buildenv:latest
+# > docker push cahirwpz/demoscene-toolchain-buildenv:latest
 
-FROM debian:jessie
+FROM debian:stretch
 
 WORKDIR /root
 

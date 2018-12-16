@@ -19,9 +19,9 @@ jobs:
           paths:
             - .build-m68k
       - run: './toolchain-m68k --quiet build --prefix=/usr/local'
-      - run: 'tar cvzf demoscene-toolchain.tar.gz /usr/local'
+      - run: 'tar cvzf /demoscene-toolchain.tar.gz /usr/local'
       - store_artifacts:
-          path: demoscene-toolchain.tar.gz
+          path: /demoscene-toolchain.tar.gz
 
 workflows:
   version: 2

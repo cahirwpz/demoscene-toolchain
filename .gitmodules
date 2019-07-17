@@ -1,9 +1,6 @@
 [submodule "submodules/gcc-2.95.3"]
 	path = submodules/gcc-2.95.3
 	url = https://github.com/adtools/amigaos-gcc-2.95.3
-[submodule "submodules/libnix"]
-	path = submodules/libnix
-	url = https://github.com/adtools/libnix
 [submodule "submodules/fd2sfd"]
 	path = submodules/fd2sfd
 	url = https://github.com/adtools/fd2sfd

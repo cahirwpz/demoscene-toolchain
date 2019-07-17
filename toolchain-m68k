@@ -25,12 +25,6 @@ URLS = \
    ('ftp://ftp.uk.freesbie.org/sites/distfiles.gentoo.org/distfiles/' +
     'flex-2.5.4a.tar.gz', 'flex-2.5.4.tar.gz'),
    ('http://www.haage-partner.de/download/AmigaOS/NDK39.lha', 'NDK_3.9.lha'),
-   ('ftp://ftp.exotica.org.uk/mirrors/geekgadgets/amiga/m68k/snapshots/' +
-    '990529/bin/libamiga-bin.tgz', 'libamiga.tar.gz'),
-   ('ftp://ftp.exotica.org.uk/mirrors/geekgadgets/amiga/m68k/snapshots/' +
-    '990529/src/libm-5.4-src.tgz', 'libm-5.4.tar.gz'),
-   ('http://downloads.sf.net/project/amiga/ixemul.library/48.2/ixemul-src.lha',
-    'ixemul-48.2.lha'),
    ('http://server.owl.de/~frank/tags/vasm1_8d.tar.gz', 'vasm.tar.gz')]
 
 
@@ -84,13 +78,6 @@ def install_ndk():
             '--output={prefix}/{target}/ndk/include/lvo/%s_lib.i' % base, name)
 
 
-@recipe('headers-install')
-def headers_install():
-  info('installing ixemul header files')
-
-  copytree('{sources}/{ixemul}/include', '{prefix}/{target}/libnix/include')
-
-
 @recipe('fd2sfd-install')
 def install_fd2sfd():
   info('installing fd2sfd')
@@ -108,13 +95,6 @@ def install_fd2pragma():
   for header in ['macros.h', 'stubs.h']:
       copy(path.join('{build}/fd2pragma/Include/inline', header),
            '{prefix}/{target}/ndk/include/inline')
-
-
-@recipe('{libamiga}-install')
-def install_libamiga():
-  info('installing libamiga')
-
-  copytree('{sources}/{libamiga}/lib', '{prefix}/{target}/libnix/lib')
 
 
 def update_autotools(dst):
@@ -316,9 +296,6 @@ def build():
     make('{binutils}', 'install-ld')
     make('{binutils}', 'install-info')
 
-  unpack('{ixemul}', top_dir='ixemul')
-  patch('{ixemul}')
-
   with env(CC=CC, CXX=CXX, CFLAGS=FLAGS, CXXFLAGS=FLAGS):
     configure('{gcc}',
               '--prefix={prefix}',
@@ -327,52 +304,15 @@ def build():
               '--host=i686-linux-gnu',
               '--build=i686-linux-gnu',
               '--target=m68k-amigaos',
-              '--enable-languages=c,c++',
+              '--enable-languages=c',
               '--enable-version-specific-runtime-libs',
-              '--with-headers={sources}/{ixemul}/include',
               from_dir='{submodules}/{gcc}')
     touch_genfiles('{submodules}/{gcc}')
     touch('{submodules}/{gcc}/gcc/c-parse.gperf')
     touch('{submodules}/{gcc}/gcc/configure')
     # parallel build fails for all-gcc
-    make('{gcc}', 'all-gcc',
-         MAKEINFO='makeinfo', CFLAGS_FOR_TARGET='-noixemul')
-    make('{gcc}', 'install-gcc',
-         MAKEINFO='makeinfo', CFLAGS_FOR_TARGET='-noixemul')
-
-  headers_install()
-
-  unpack('{libamiga}', top_dir='.')
-  install_libamiga()
-
-  configure('{libnix}',
-            '--prefix={prefix}/{target}/libnix',
-            '--host=i686-linux-gnu',
-            '--target=m68k-amigaos',
-            from_dir='{submodules}/{libnix}')
-  make('{libnix}',
-       CC='m68k-amigaos-gcc',
-       CPP='m68k-amigaos-gcc -E',
-       AR='m68k-amigaos-ar',
-       AS='m68k-amigaos-as',
-       RANLIB='m68k-amigaos-ranlib',
-       LD='m68k-amigaos-ld')
-  make('{libnix}', 'install')
-
-  copy('{submodules}/{libnix}/sources/headers/stabs.h',
-       '{prefix}/{target}/libnix/include')
-
-  unpack('{libm}', top_dir='contrib/libm')
-  update_autotools('{sources}/{libm}')
-  with env(CC='m68k-amigaos-gcc -noixemul',
-           AR='m68k-amigaos-ar',
-           RANLIB='m68k-amigaos-ranlib'):
-    configure('{libm}',
-              '--prefix={prefix}/{target}/libnix',
-              '--host=i686-linux-gnu',
-              '--target=m68k-amigaos')
-  make('{libm}')
-  make('{libm}', 'install')
+    make('{gcc}', 'all-gcc', MAKEINFO='makeinfo')
+    make('{gcc}', 'install-gcc', MAKEINFO='makeinfo')
 
 
 def clean():
@@ -418,11 +358,6 @@ if __name__ == "__main__":
          autoconf='autoconf-2.13',
          texinfo='texinfo-4.12',
          NDK='NDK_3.9',
-         ixemul='ixemul-48.2',
-         libm='libm-5.4',
-         libnix='libnix',
-         libamiga='libamiga',
-         libdebug='libdebug',
          binutils='binutils-2.14',
          gcc='gcc-2.95.3',
          target='m68k-amigaos',

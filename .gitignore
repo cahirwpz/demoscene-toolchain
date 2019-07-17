@@ -4,6 +4,7 @@
 *.zip
 *~
 *.o
+*.pyc
 .DS_Store
 .ropeproject
 .build-*/

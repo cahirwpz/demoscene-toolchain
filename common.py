@@ -17,7 +17,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
-import urllib2
+from urllib.request import urlopen
 import zipfile
 
 VARS = {}
@@ -226,7 +226,7 @@ def execute(*cmd):
 def textfile(*lines):
   f, name = mkstemp(dir='{tmpdir}')
   debug('creating text file script "%s"', topdir(name))
-  os.write(f, '\n'.join(lines) + '\n')
+  os.write(f, ('\n'.join(lines) + '\n').encode())
   os.close(f)
   return name
 
@@ -235,10 +235,10 @@ def textfile(*lines):
 def download(url, name):
   info('download "%s" to "%s"', url, topdir(name))
 
-  u = urllib2.urlopen(url)
+  u = urlopen(url)
   meta = u.info()
   try:
-    size = int(meta.getheaders('Content-Length')[0])
+    size = int(meta['Content-Length'])
   except IndexError:
     size = None
 
@@ -280,7 +280,7 @@ def unarc(name):
       debug('extract "%s"', filename)
       if path.isdir(filename):
         continue
-      with open(filename, 'w') as f:
+      with open(filename, 'wb') as f:
         f.write(arc.read(item.filename))
   elif name.endswith('.tar.gz') or name.endswith('.tar.bz2'):
     with tarfile.open(name) as arc:
@@ -309,15 +309,8 @@ def fix_python_shebang(filename, prefix):
 
 
 @fill_in_args
-def find_site_dir(dirname):
-  prefix = sysconfig.EXEC_PREFIX
-  destlib = sysconfig.get_config_var('DESTLIB')
-  return path.join(dirname, destlib[len(prefix) + 1:], 'site-packages')
-
-
-@fill_in_args
-def add_site_dir(dirname):
-  dirname = find_site_dir(dirname)
+def add_site_dir(dirname, py_ver):
+  dirname = path.join(dirname, 'lib', py_ver, 'site-packages')
   info('adding "%s" to python site dirs', topdir(dirname))
   site.addsitedir(dirname)
 
@@ -525,7 +518,7 @@ def require_header(headers, lang='c', errmsg='', symbol=None, value=None):
         proc_stdin.append("#error")
         proc_stdin.append("#endif")
 
-    proc_stdout, proc_stderr = proc.communicate('\n'.join(proc_stdin))
+    proc_stdout, proc_stderr = proc.communicate('\n'.join(proc_stdin).encode())
     proc.wait()
 
     if proc.returncode == 0:
@@ -537,6 +530,5 @@ def require_header(headers, lang='c', errmsg='', symbol=None, value=None):
 __all__ = ['setvar', 'panic', 'cmpver', 'find_executable', 'chmod', 'execute',
            'rmtree', 'mkdir', 'copy', 'copytree', 'unarc', 'fetch', 'cwd',
            'symlink', 'remove', 'move', 'find', 'textfile', 'env', 'path',
-           'add_site_dir', 'find_site_dir', 'pysetup', 'pyinstall', 'recipe',
-           'unpack', 'patch', 'configure', 'make', 'require_header', 'touch',
-           'pyfixbin']
+           'add_site_dir', 'pysetup', 'pyinstall', 'recipe', 'unpack', 'patch',
+           'configure', 'make', 'require_header', 'touch', 'pyfixbin']

@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python3
 
 # Build cross toolchain for AmigaOS <= 3.9 / M68k target.
 
@@ -57,7 +57,7 @@ def install_vasm():
     '#!/bin/sh',
     '',
     '{prefix}/{target}/bin/vasmm68k_mot -I{prefix}/{target}/ndk/include "$@"')
-  chmod(vasm, 0755)
+  chmod(vasm, 0o755)
   move(vasm, '{prefix}/bin/vasm')
 
 
@@ -150,7 +150,9 @@ def download():
 
 
 def build():
-  for var in environ.keys():
+  py_ver = 'python%d.%d' % (sys.version_info.major, sys.version_info.minor)
+
+  for var in list(environ.keys()):
     if var not in ['_', 'LOGNAME', 'HOME', 'SHELL', 'TMPDIR', 'PWD']:
       del environ[var]
 
@@ -163,7 +165,7 @@ def build():
   environ['LANG'] = 'C'
   environ['TERM'] = 'xterm'
 
-  add_site_dir('{prefix}')
+  add_site_dir('{prefix}', py_ver)
 
   """
   Make sure we always choose known compiler (from the distro) and not one in
@@ -209,9 +211,8 @@ def build():
   require_header(['ncurses.h', 'ncurses/ncurses.h'],
                  lang='c', errmsg='libncurses-dev package missing')
 
-  py_ver = 'python%d.%d' % (sys.version_info.major, sys.version_info.minor)
-  require_header([path.join(py_ver, 'Python.h')],
-                 lang='c', errmsg='python-dev package missing')
+  # require_header([path.join(py_ver, 'Python.h')],
+  #                lang='c', errmsg='python-dev package missing')
 
   execute('git', 'submodule', 'init', 'submodules/python-lhafile');
   execute('git', 'submodule', 'update', 'submodules/python-lhafile');
@@ -223,6 +224,7 @@ def build():
   unpack('{automake}')
 
   unpack('{m4}')
+  patch('{m4}')
   configure('{m4}', '--prefix={host}')
   make('{m4}', parallel=True)
   make('{m4}', 'install')
@@ -384,8 +386,8 @@ def clean():
 if __name__ == "__main__":
   logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
 
-  if not sys.version_info[:2] == (2, 7):
-    panic('I need Python 2.7 to run!')
+  if not sys.version_info[:2] >= (3, 5):
+    panic('I need Python 3.5 to run!')
 
   if not any(fnmatch(platform.system(), pat)
              for pat in ['Darwin', 'Linux', 'CYGWIN_NT*', 'MSYS_NT*']):

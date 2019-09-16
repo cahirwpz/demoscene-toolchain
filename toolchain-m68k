@@ -271,7 +271,7 @@ def build():
   """
 
   ARCH = '-m32' if platform.machine() == 'x86_64' else ''
-  CC = ' '.join([CC, ARCH, '-std=gnu11'])
+  CC = ' '.join([CC, ARCH, '-std=gnu99'])
   CXX = ' '.join([CXX, ARCH, '-std=gnu++11'])
 
   """
@@ -313,6 +313,21 @@ def build():
     # parallel build fails for all-gcc
     make('{gcc}', 'all-gcc', MAKEINFO='makeinfo')
     make('{gcc}', 'install-gcc', MAKEINFO='makeinfo')
+
+  with env(CC=CC, CXX=CXX, CFLAGS=FLAGS, CXXFLAGS=FLAGS):
+    configure('{gdb}',
+              '--prefix={prefix}',
+              '--infodir={prefix}/{target}/info',
+              '--mandir={prefix}/share/man',
+              '--disable-nls',
+              '--host=i686-linux-gnu',
+              '--build=i686-linux-gnu',
+              '--target=m68k-amigaos',
+              from_dir='{submodules}/{gdb}')
+    touch_genfiles('{submodules}/{gdb}')
+    make('{gdb}', parallel=True)
+    make('{gdb}', 'install-gdb')
+    make('{gdb}', 'install-info')
 
 
 def clean():
@@ -360,6 +375,7 @@ if __name__ == "__main__":
          NDK='NDK_3.9',
          binutils='binutils-2.14',
          gcc='gcc-2.95.3',
+         gdb='gdb-4.18',
          target='m68k-amigaos',
          python=sys.executable,
          sitedir=path.join('lib', '{py_ver}', 'site-packages'),

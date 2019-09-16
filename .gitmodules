@@ -16,3 +16,6 @@
 [submodule "submodules/binutils-2.14"]
 	path = submodules/binutils-2.14
 	url = https://github.com/adtools/amigaos-binutils-2.14.git
+[submodule "submodules/gdb-4.18"]
+	path = submodules/gdb-4.18
+	url = https://github.com/cahirwpz/amigaos-gdb-4.18

@@ -264,8 +264,6 @@ def build():
   patch('{NDK}')
   install_ndk()
 
-  unpack('{ncurses}')
-
   """
   On 64-bit architecture GNU Assembler crashes writing out an object, due to
   (probably) miscalculated structure sizes.  There could be some other bugs
@@ -277,15 +275,34 @@ def build():
   CC = ' '.join([CC, ARCH, '-std=gnu99'])
   CXX = ' '.join([CXX, ARCH, '-std=gnu++11'])
 
-  CC += ' -L{prefix}/lib'
-  CXX += ' -L{prefix}/lib'
-  FLAGS += ' -I{prefix}/include'
+  unpack('{ncurses}')
+  with env(CC=CC, CXX=CXX, CFLAGS=FLAGS, CXXFLAGS=FLAGS):
+    configure('{ncurses}',
+              '--prefix={host}',
+              '--infodir={host}/{target}/info',
+              '--mandir={host}/share/man',
+              '--host=i686-linux-gnu',
+              '--build=i686-linux-gnu',
+              '--without-cxx',
+              '--without-ada',
+              '--without-progs',
+              '--without-tests',
+              '--disable-pc-files',
+              '--disable-db-install',
+              '--without-manpages',
+              '--without-shared')
+    make('{ncurses}', parallel=True)
+    make('{ncurses}', 'install')
 
   """
   Older gcc compilers (i.e. 2.95.3 and 3.4.6) and binutils have to be tricked
   into thinking that they're being compiled on Linux IA-32 machine. Theirs
   config.guess script knows nothing about x86-64 or darwin.
   """
+
+  CC += ' -L{host}/lib'
+  CXX += ' -L{host}/lib'
+  FLAGS += ' -I{host}/include'
 
   with env(CC=CC, CXX=CXX, CFLAGS=FLAGS, CXXFLAGS=FLAGS):
     configure('{binutils}',
@@ -320,24 +337,6 @@ def build():
     # parallel build fails for all-gcc
     make('{gcc}', 'all-gcc', MAKEINFO='makeinfo')
     make('{gcc}', 'install-gcc', MAKEINFO='makeinfo')
-
-  with env(CC=CC, CXX=CXX, CFLAGS=FLAGS, CXXFLAGS=FLAGS):
-    configure('{ncurses}',
-              '--prefix={prefix}',
-              '--infodir={prefix}/{target}/info',
-              '--mandir={prefix}/share/man',
-              '--host=i686-linux-gnu',
-              '--build=i686-linux-gnu',
-              '--without-cxx',
-              '--without-ada',
-              '--without-progs',
-              '--without-tests',
-              '--disable-pc-files',
-              '--disable-db-install',
-              '--without-manpages',
-              '--without-shared')
-    make('{ncurses}', parallel=True)
-    make('{ncurses}', 'install')
 
   with env(CC=CC, CXX=CXX, CFLAGS=FLAGS, CXXFLAGS=FLAGS):
     configure('{gdb}',

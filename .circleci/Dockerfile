@@ -9,6 +9,8 @@ WORKDIR /root
 
 RUN apt-get -q update && apt-get upgrade -y
 RUN apt-get install -y --no-install-recommends \
-            git-core make gettext patch bison flex gperf ca-certificates \
-            gcc g++ gcc-multilib libc6-dev libncurses-dev \
-            python3 libpython3-dev python3-setuptools quilt subversion texinfo
+            automake bison ca-certificates flex git-core gettext gperf \
+            gcc g++ gcc-multilib libc6-dev libglib2.0-dev libncurses-dev \
+            libpng-dev libsdl2-dev libopenal-dev libtool make \
+            patch pkg-config python3 libpython3-dev python3-setuptools \
+            quilt subversion texinfo zip

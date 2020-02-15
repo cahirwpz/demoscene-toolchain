@@ -97,6 +97,14 @@ def install_fd2pragma():
            '{prefix}/{target}/ndk/include/inline')
 
 
+@recipe('fs-uae-bootstrap')
+def fs_uae_bootstrap():
+  info('bootstrapping fs-uae')
+
+  with cwd('{submodules}/{fsuae}'):
+    execute('sh', 'bootstrap')
+
+
 def update_autotools(dst):
   copy('{sources}/{automake}/lib/config.guess', path.join(dst, 'config.guess'))
   copy('{sources}/{automake}/lib/config.sub', path.join(dst, 'config.sub'))
@@ -136,16 +144,7 @@ def build():
     if var not in ['_', 'LOGNAME', 'HOME', 'SHELL', 'TMPDIR', 'PWD']:
       del environ[var]
 
-  PATH = ':'.join(['/usr/bin', '/bin'])
-
-  if fnmatch(platform.system(), 'MSYS_NT*'):
-    PATH.append('/usr/bin/core_perl') # pod2text, pod2man
-
-  environ['PATH'] = PATH
-  environ['LANG'] = 'C'
-  environ['TERM'] = 'xterm'
-
-  add_site_dir('{prefix}', py_ver)
+  PATHS = ['/usr/bin', '/bin']
 
   """
   Make sure we always choose known compiler (from the distro) and not one in
@@ -153,9 +152,21 @@ def build():
   """
   if platform.system() == 'Darwin':
     CC, CXX = 'clang', 'clang++'
-    PATH += ':/usr/local/bin'
+    PATHS.append('/usr/local/bin')
+    PATHS.append('/usr/local/opt/gettext/bin')
   else:
     CC, CXX = 'gcc', 'g++'
+
+  if fnmatch(platform.system(), 'MSYS_NT*'):
+    PATHS.append('/usr/bin/core_perl')  # pod2text, pod2man
+
+  PATH = ':'.join(PATHS)
+
+  environ['PATH'] = PATH
+  environ['LANG'] = 'C'
+  environ['TERM'] = 'xterm'
+
+  add_site_dir('{prefix}', py_ver)
 
   CC = find_executable(CC)
   CXX = find_executable(CXX)
@@ -197,7 +208,7 @@ def build():
 
   execute('git', 'submodule', 'init', 'submodules/python-lhafile')
   execute('git', 'submodule', 'update', 'submodules/python-lhafile')
-  execute('quilt', 'push', '-a')
+  execute('quilt', 'push', '-a', ignore_errors=True)
 
   unpack('python-lha', work_dir='{build}')
   pysetup('python-lha')
@@ -318,6 +329,36 @@ def build():
     make('{gcc}', 'all-gcc', MAKEINFO='makeinfo')
     make('{gcc}', 'install-gcc', MAKEINFO='makeinfo')
 
+  with env(CC=CC, CXX=CXX, CFLAGS=FLAGS, CXXFLAGS=FLAGS, PATH=PATH):
+    fs_uae_bootstrap()
+    configure('{fsuae}',
+              '--prefix={prefix}',
+              '--enable-gdbstub',
+              '--without-libmpeg2',
+              '--disable-a2065',
+              '--disable-action-replay',
+              '--disable-ahi',
+              '--disable-arcadia',
+              '--disable-builtin-slirp',
+              '--disable-gfxboard',
+              '--disable-jit',
+              '--disable-lua',
+              '--disable-netplay',
+              '--disable-pearpc-cpu',
+              '--disable-ppc',
+              '--disable-prowizard',
+              '--disable-slirp',
+              '--disable-qemu-cpu',
+              '--disable-qemu-slirp',
+              '--disable-uaenet',
+              '--disable-uaescsi',
+              '--disable-uaeserial',
+              '--disable-dms',
+              '--disable-zip',
+              from_dir='{submodules}/{fsuae}')
+    make('{fsuae}', parallel=True)
+    make('{fsuae}', 'install')
+
 
 def clean():
   rmtree('{stamps}')
@@ -364,6 +405,7 @@ if __name__ == "__main__":
          texinfo='texinfo-4.12',
          NDK='NDK_3.9',
          binutils='binutils-gdb',
+         fsuae='fs-uae',
          gcc='gcc-2.95.3',
          target='m68k-amigaos',
          python=sys.executable,

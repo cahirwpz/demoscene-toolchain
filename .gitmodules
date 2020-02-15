@@ -16,3 +16,6 @@
 [submodule "submodules/binutils-gdb"]
 	path = submodules/binutils-gdb
 	url = https://github.com/bebbo/binutils-gdb.git
+[submodule "submodules/fs-uae"]
+	path = submodules/fs-uae
+	url = https://github.com/FrodeSolheim/fs-uae.git

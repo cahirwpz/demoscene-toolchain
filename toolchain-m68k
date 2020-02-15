@@ -170,7 +170,7 @@ def build():
 
   CC = find_executable(CC)
   CXX = find_executable(CXX)
-  FLAGS = '-g -O2'
+  FLAGS = '-g -O2 -pipe'
 
   if getLogger().isEnabledFor(logging.DEBUG):
     FLAGS += ' -Wall'

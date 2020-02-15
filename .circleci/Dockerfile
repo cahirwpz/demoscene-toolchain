@@ -11,4 +11,4 @@ RUN apt-get -q update && apt-get upgrade -y
 RUN apt-get install -y --no-install-recommends \
             git-core make gettext patch bison flex gperf ca-certificates \
             gcc g++ gcc-multilib libc6-dev libncurses-dev \
-            python3 libpython3-dev python3-setuptools quilt subversion
+            python3 libpython3-dev python3-setuptools quilt subversion texinfo

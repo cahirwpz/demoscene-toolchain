@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.7 -B
+#!/usr/bin/env python3 -B
 
 from __future__ import print_function
 
@@ -496,7 +496,7 @@ def make(name, target=None, makefile=None, parallel=False, **makevars):
     if makefile is not None:
       args = ['-f', makefile] + args
     if parallel:
-      args = ['-j%d' % cpu_count()] + args
+      args = ['-j%d' % min(8, cpu_count())] + args
     execute('make', *args)
 
 

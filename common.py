@@ -214,12 +214,15 @@ def chmod(name, mode):
 
 
 @fill_in_args
-def execute(*cmd):
+def execute(*cmd, **kwargs):
   debug('execute "%s"', " ".join(cmd))
+  ignore_errors = kwargs.get('ignore_errors', False)
   try:
     subprocess.check_call(cmd)
   except subprocess.CalledProcessError as ex:
-    panic('command "%s" failed with %d', " ".join(list(ex.cmd)), ex.returncode)
+    if not ignore_errors:
+      panic('command "%s" failed with %d',
+            " ".join(list(ex.cmd)), ex.returncode)
 
 
 @fill_in_args

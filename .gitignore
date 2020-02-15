@@ -8,6 +8,7 @@
 .DS_Store
 .ropeproject
 .build-*/
+.pc/
 m68k-amigaos/
-m68k-elf/
 tmp/
+commodore

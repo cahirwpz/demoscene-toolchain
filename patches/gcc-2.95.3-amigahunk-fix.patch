@@ -1,0 +1,17 @@
+Index: demoscene-toolchain/submodules/gcc-2.95.3/gcc/Makefile.in
+===================================================================
+--- demoscene-toolchain.orig/submodules/gcc-2.95.3/gcc/Makefile.in
++++ demoscene-toolchain/submodules/gcc-2.95.3/gcc/Makefile.in
+@@ -959,10 +959,8 @@ libgcc1.conv: libgcc1.a
+ # Use this as value of LIBGCC1 to inhibit use of libgcc1.c entirely.
+ # Make an empty file instead.
+ libgcc1.null: $(GCC_PASSES)
+-	echo "void __foo () {}" > dummy.c
+-	$(GCC_FOR_TARGET) $(GCC_CFLAGS) -c dummy.c
+-	$(AR_FOR_TARGET) $(AR_FLAGS_FOR_TARGET) libgcc1.null dummy$(objext)
+-	rm -f dummy$(objext) dummy.c
++	rm -f $@
++	touch $@
+ 
+ # This is $(LIBGCC1) for a cross-compiler.
+ # We have no automatic way of building libgcc1.a, 

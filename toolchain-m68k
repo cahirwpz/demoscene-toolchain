@@ -153,6 +153,7 @@ def build():
   """
   if platform.system() == 'Darwin':
     CC, CXX = 'clang', 'clang++'
+    PATH += ':/usr/local/bin'
   else:
     CC, CXX = 'gcc', 'g++'
 
@@ -196,6 +197,8 @@ def build():
 
   execute('git', 'submodule', 'init', 'submodules/python-lhafile')
   execute('git', 'submodule', 'update', 'submodules/python-lhafile')
+  execute('quilt', 'push', '-a')
+
   unpack('python-lha', work_dir='{build}')
   pysetup('python-lha')
 
@@ -272,6 +275,7 @@ def build():
               '--disable-plugins',
               '--disable-werror',
               '--disable-tui',
+              '--with-python=' + sys.executable,
               '--target=m68k-amigaos',
               from_dir='{submodules}/{binutils}')
     touch_genfiles('{submodules}/{binutils}')
@@ -321,6 +325,7 @@ def clean():
   rmtree('{host}')
   rmtree('{build}')
   rmtree('{tmpdir}')
+  execute('quilt', 'pop', '-a', ignore_errors=True)
 
 
 if __name__ == "__main__":

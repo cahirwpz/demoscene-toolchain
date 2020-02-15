@@ -22,11 +22,10 @@ URLS = \
    'https://ftp.gnu.org/gnu/bison/bison-1.35.tar.gz',
    'https://ftp.gnu.org/gnu/texinfo/texinfo-4.12.tar.gz',
    'https://ftp.gnu.org/gnu/automake/automake-1.15.tar.gz',
-   'https://ftp.gnu.org/gnu/ncurses/ncurses-6.1.tar.gz',
    ('ftp://ftp.uk.freesbie.org/sites/distfiles.gentoo.org/distfiles/' +
     'flex-2.5.4a.tar.gz', 'flex-2.5.4.tar.gz'),
    ('http://www.haage-partner.de/download/AmigaOS/NDK39.lha', 'NDK_3.9.lha'),
-   ('http://server.owl.de/~frank/tags/vasm1_8d.tar.gz', 'vasm.tar.gz')]
+   ('http://server.owl.de/~frank/tags/vasm1_8g.tar.gz', 'vasm.tar.gz')]
 
 
 from common import * # NOQA
@@ -137,12 +136,12 @@ def build():
     if var not in ['_', 'LOGNAME', 'HOME', 'SHELL', 'TMPDIR', 'PWD']:
       del environ[var]
 
-  PATH = ['/usr/bin', '/bin']
+  PATH = ':'.join(['/usr/bin', '/bin'])
 
   if fnmatch(platform.system(), 'MSYS_NT*'):
     PATH.append('/usr/bin/core_perl') # pod2text, pod2man
 
-  environ['PATH'] = ":".join(PATH)
+  environ['PATH'] = PATH
   environ['LANG'] = 'C'
   environ['TERM'] = 'xterm'
 
@@ -171,7 +170,7 @@ def build():
   environ['CXX'] = CXX
   environ['PATH'] = ':'.join([path.join('{prefix}', 'bin'),
                               path.join('{host}', 'bin'),
-                              environ['PATH']])
+                              PATH])
 
   setvar(cc=environ['CC'], cxx=environ['CXX'])
 
@@ -195,8 +194,8 @@ def build():
   # require_header([path.join(py_ver, 'Python.h')],
   #                lang='c', errmsg='python-dev package missing')
 
-  execute('git', 'submodule', 'init', 'submodules/python-lhafile');
-  execute('git', 'submodule', 'update', 'submodules/python-lhafile');
+  execute('git', 'submodule', 'init', 'submodules/python-lhafile')
+  execute('git', 'submodule', 'update', 'submodules/python-lhafile')
   unpack('python-lha', work_dir='{build}')
   pysetup('python-lha')
 
@@ -264,35 +263,28 @@ def build():
   patch('{NDK}')
   install_ndk()
 
-  """
-  On 64-bit architecture GNU Assembler crashes writing out an object, due to
-  (probably) miscalculated structure sizes.  There could be some other bugs
-  lurking there in 64-bit mode, but I have little incentive chasing them.
-  Just compile everything in 32-bit mode and forget about the issues.
-  """
-
-  ARCH = '-m32' if platform.machine() == 'x86_64' else ''
-  CC = ' '.join([CC, ARCH, '-std=gnu99'])
-  CXX = ' '.join([CXX, ARCH, '-std=gnu++11'])
-
-  unpack('{ncurses}')
-  with env(CC=CC, CXX=CXX, CFLAGS=FLAGS, CXXFLAGS=FLAGS):
-    configure('{ncurses}',
-              '--prefix={host}',
-              '--infodir={host}/{target}/info',
-              '--mandir={host}/share/man',
-              '--host=i686-linux-gnu',
-              '--build=i686-linux-gnu',
-              '--without-cxx',
-              '--without-ada',
-              '--without-progs',
-              '--without-tests',
-              '--disable-pc-files',
-              '--disable-db-install',
-              '--without-manpages',
-              '--without-shared')
-    make('{ncurses}', parallel=True)
-    make('{ncurses}', 'install')
+  with env(CC=CC, CXX=CXX, CFLAGS=FLAGS, CXXFLAGS=FLAGS, PATH=PATH):
+    configure('{binutils}',
+              '--prefix={prefix}',
+              '--infodir={prefix}/{target}/info',
+              '--mandir={prefix}/share/man',
+              '--disable-nls',
+              '--disable-plugins',
+              '--disable-werror',
+              '--disable-tui',
+              '--target=m68k-amigaos',
+              from_dir='{submodules}/{binutils}')
+    touch_genfiles('{submodules}/{binutils}')
+    make('{binutils}', 'configure-gdb')
+    make('{binutils}', 'all-bfd', parallel=True)
+    make('{binutils}', 'all-binutils', parallel=True)
+    make('{binutils}', 'all-gas', parallel=True)
+    make('{binutils}', 'all-ld', parallel=True)
+    make('{binutils}', 'all-gdb', parallel=True)
+    make('{binutils}', 'install-binutils')
+    make('{binutils}', 'install-gas')
+    make('{binutils}', 'install-ld')
+    make('{binutils}', 'install-gdb')
 
   """
   Older gcc compilers (i.e. 2.95.3 and 3.4.6) and binutils have to be tricked
@@ -300,27 +292,11 @@ def build():
   config.guess script knows nothing about x86-64 or darwin.
   """
 
-  CC += ' -L{host}/lib'
-  CXX += ' -L{host}/lib'
-  FLAGS += ' -I{host}/include'
+  ARCH = '-m32' if platform.machine() == 'x86_64' else ''
+  CC32 = ' '.join([CC, ARCH, '-std=gnu99'])
+  CXX32 = ' '.join([CXX, ARCH, '-std=gnu++11'])
 
-  with env(CC=CC, CXX=CXX, CFLAGS=FLAGS, CXXFLAGS=FLAGS):
-    configure('{binutils}',
-              '--prefix={prefix}',
-              '--infodir={prefix}/{target}/info',
-              '--mandir={prefix}/share/man',
-              '--disable-nls',
-              '--host=i686-linux-gnu',
-              '--target=m68k-amigaos',
-              from_dir='{submodules}/{binutils}')
-    touch_genfiles('{submodules}/{binutils}')
-    make('{binutils}', parallel=True)
-    make('{binutils}', 'install-binutils')
-    make('{binutils}', 'install-gas')
-    make('{binutils}', 'install-ld')
-    make('{binutils}', 'install-info')
-
-  with env(CC=CC, CXX=CXX, CFLAGS=FLAGS, CXXFLAGS=FLAGS):
+  with env(CC=CC32, CXX=CXX32, CFLAGS=FLAGS, CXXFLAGS=FLAGS):
     configure('{gcc}',
               '--prefix={prefix}',
               '--infodir={prefix}/{target}/info',
@@ -337,21 +313,6 @@ def build():
     # parallel build fails for all-gcc
     make('{gcc}', 'all-gcc', MAKEINFO='makeinfo')
     make('{gcc}', 'install-gcc', MAKEINFO='makeinfo')
-
-  with env(CC=CC, CXX=CXX, CFLAGS=FLAGS, CXXFLAGS=FLAGS):
-    configure('{gdb}',
-              '--prefix={prefix}',
-              '--infodir={prefix}/{target}/info',
-              '--mandir={prefix}/share/man',
-              '--disable-nls',
-              '--host=i686-linux-gnu',
-              '--build=i686-linux-gnu',
-              '--target=m68k-amigaos',
-              from_dir='{submodules}/{gdb}')
-    touch_genfiles('{submodules}/{gdb}')
-    make('{gdb}', parallel=True)
-    make('{gdb}', 'install-gdb')
-    make('{gdb}', 'install-info')
 
 
 def clean():
@@ -396,11 +357,9 @@ if __name__ == "__main__":
          automake='automake-1.15',
          autoconf='autoconf-2.13',
          texinfo='texinfo-4.12',
-         ncurses='ncurses-6.1',
          NDK='NDK_3.9',
-         binutils='binutils-2.14',
+         binutils='binutils-gdb',
          gcc='gcc-2.95.3',
-         gdb='gdb-4.18',
          target='m68k-amigaos',
          python=sys.executable,
          sitedir=path.join('lib', '{py_ver}', 'site-packages'),

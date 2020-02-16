@@ -19,3 +19,6 @@
 [submodule "submodules/fs-uae"]
 	path = submodules/fs-uae
 	url = https://github.com/FrodeSolheim/fs-uae.git
+[submodule "submodules/python-amidev"]
+	path = submodules/python-amidev
+	url = https://github.com/cahirwpz/python-amidev.git

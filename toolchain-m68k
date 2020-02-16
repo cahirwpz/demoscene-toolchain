@@ -197,6 +197,7 @@ def build():
   find_executable('gperf')
   find_executable('patch')
   find_executable('make')
+  find_executable('makeinfo')
   find_executable('git')
   find_executable('yacc')
 
@@ -208,12 +209,11 @@ def build():
 
   execute('git', 'submodule', 'init', 'submodules/python-lhafile')
   execute('git', 'submodule', 'update', 'submodules/python-lhafile')
-  execute('quilt', 'push', '-a', ignore_errors=True)
-
   unpack('python-lha', work_dir='{build}')
   pysetup('python-lha')
 
   download()
+  execute('quilt', 'push', '-a', ignore_errors=True)
 
   unpack('{automake}')
 
@@ -358,6 +358,9 @@ def build():
               from_dir='{submodules}/{fsuae}')
     make('{fsuae}', parallel=True)
     make('{fsuae}', 'install')
+
+  unpack('python-amidev', work_dir='{build}')
+  pysetup('python-amidev')
 
 
 def clean():

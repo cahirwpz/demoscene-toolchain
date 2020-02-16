@@ -8,6 +8,9 @@ FROM debian:buster
 WORKDIR /root
 
 RUN apt-get -q update && apt-get upgrade -y
-RUN apt-get install -y --no-install-recommends libc6-i386
-ADD http://circleci.com/api/v1/project/cahirwpz/demoscene-toolchain/latest/artifacts/0/demoscene-toolchain.tar.gz demoscene-toolchain.tar.gz
-RUN tar -C / -xvzf demoscene-toolchain.tar.gz && rm demoscene-toolchain.tar.gz
+RUN apt-get install -y --no-install-recommends \
+            automake bison ca-certificates flex git-core gettext gperf \
+            gcc g++ gcc-multilib libc6-dev libglib2.0-dev libncurses-dev \
+            libpng-dev libsdl2-dev libopenal-dev libtool make \
+            patch pkg-config python3 libpython3-dev python3-setuptools \
+            quilt subversion texinfo zip

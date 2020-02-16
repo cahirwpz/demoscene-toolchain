@@ -3,7 +3,7 @@ version: 2
 defaults: &defaults
   working_directory: ~/demoscene-toolchain
   docker:
-    - image: cahirwpz/demoscene-toolchain-buildenv:latest
+    - image: cahirwpz/demoscene-toolchain:latest
 
 jobs:
   m68k:

@@ -301,17 +301,10 @@ def build():
     make('{binutils}', 'install-ld')
     make('{binutils}', 'install-gdb')
 
-  """
-  Older gcc compilers (i.e. 2.95.3 and 3.4.6) and binutils have to be tricked
-  into thinking that they're being compiled on Linux IA-32 machine. Theirs
-  config.guess script knows nothing about x86-64 or darwin.
-  """
+  CCOLD = ' '.join([CC, '-std=gnu99'])
+  CXXOLD = ' '.join([CXX, '-std=gnu++11'])
 
-  ARCH = '-m32' if platform.machine() == 'x86_64' else ''
-  CC32 = ' '.join([CC, ARCH, '-std=gnu99'])
-  CXX32 = ' '.join([CXX, ARCH, '-std=gnu++11'])
-
-  with env(CC=CC32, CXX=CXX32, CFLAGS=FLAGS, CXXFLAGS=FLAGS):
+  with env(CC=CCOLD, CXX=CXXOLD, CFLAGS=FLAGS, CXXFLAGS=FLAGS):
     configure('{gcc}',
               '--prefix={prefix}',
               '--infodir={prefix}/{target}/info',

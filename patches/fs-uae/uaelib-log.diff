@@ -1,0 +1,282 @@
+Index: demoscene-toolchain/submodules/fs-uae/src/od-fs/libamiga.cpp
+===================================================================
+--- demoscene-toolchain.orig/submodules/fs-uae/src/od-fs/libamiga.cpp
++++ demoscene-toolchain/submodules/fs-uae/src/od-fs/libamiga.cpp
+@@ -130,7 +130,7 @@ void amiga_floppy_set_writable_images(in
+ 
+ int amiga_init(void)
+ {
+-    printf("UAE: Initializing core derived from %s\n", UAE_BASE_VERSION);
++    setvbuf(stdout, NULL, _IOLBF, 0);
+     write_log("UAE: Initializing core derived from %s\n", UAE_BASE_VERSION);
+ 
+     uae_register_main_thread();
+Index: demoscene-toolchain/submodules/fs-uae/src/od-fs/uaemisc.cpp
+===================================================================
+--- demoscene-toolchain.orig/submodules/fs-uae/src/od-fs/uaemisc.cpp
++++ demoscene-toolchain/submodules/fs-uae/src/od-fs/uaemisc.cpp
+@@ -129,11 +129,9 @@ TCHAR console_getch (void) {
+ }
+ 
+ void close_console (void) {
+-    STUB("");
+ }
+ 
+ extern void activate_console (void) {
+-    STUB("");
+ }
+ 
+ bool console_isch (void)
+Index: demoscene-toolchain/submodules/fs-uae/src/uaelib.cpp
+===================================================================
+--- demoscene-toolchain.orig/submodules/fs-uae/src/uaelib.cpp
++++ demoscene-toolchain/submodules/fs-uae/src/uaelib.cpp
+@@ -360,6 +360,8 @@ static int native_dos_op (uae_u32 mode,
+ 	return 0;
+ }
+ 
++#include "uaelib_log.cpp"
++
+ static uae_u32 uaelib_demux_common(uae_u32 ARG0, uae_u32 ARG1, uae_u32 ARG2, uae_u32 ARG3, uae_u32 ARG4, uae_u32 ARG5)
+ {
+ 	switch (ARG0) {
+@@ -381,6 +383,8 @@ static uae_u32 uaelib_demux_common(uae_u
+ 		case 14: return emulib_GetDisk(ARG1, ARG2);
+ 		case 15: return emulib_Debug();
+ 
++ 		case 40: return emulib_Log(ARG1);
++
+ 		case 68: return emulib_Minimize();
+ 		case 69: return emulib_ExecuteNativeCode();
+ 
+Index: demoscene-toolchain/submodules/fs-uae/src/uaelib_log.cpp
+===================================================================
+--- /dev/null
++++ demoscene-toolchain/submodules/fs-uae/src/uaelib_log.cpp
+@@ -0,0 +1,184 @@
++/* This code is covered by BSD license.
++ * It was taken from NetBSD sys/lib/libsa/subr_prf.c */
++
++#include <stddef.h>
++#include <stdint.h>
++#include <stdio.h>
++#include <sys/param.h>
++
++static const char hexdigits[] = "0123456789abcdef";
++
++#define ALT 0x04
++#define SPACE 0x08
++#define LADJUST 0x10
++#define SIGN 0x20
++#define ZEROPAD 0x40
++#define NEGATIVE 0x80
++#define KPRINTN(base) kprintn(ul, base, lflag, width)
++#define RADJUSTZEROPAD()                                                       \
++  {                                                                            \
++    if ((lflag & (ZEROPAD | LADJUST)) == ZEROPAD) {                            \
++      while (width-- > 0)                                                      \
++        putchar('0');                                                          \
++    }                                                                          \
++  }
++#define LADJUSTPAD()                                                           \
++  {                                                                            \
++    if (lflag & LADJUST) {                                                     \
++      while (width-- > 0)                                                      \
++        putchar(' ');                                                          \
++    }                                                                          \
++  }
++#define RADJUSTPAD()                                                           \
++  {                                                                            \
++    if ((lflag & (ZEROPAD | LADJUST)) == 0) {                                  \
++      while (width-- > 0)                                                      \
++        putchar(' ');                                                          \
++    }                                                                          \
++  }
++
++#define KPRINT(base)                                                           \
++  {                                                                            \
++    ul = GETARG;                                                               \
++    KPRINTN(base);                                                             \
++  }
++
++static void kprintn(uint32_t ul, int base, int lflag, int width) {
++  /* hold a int32_t in base 8 */
++  char *p, buf[(sizeof(int32_t) * NBBY / 3) + 1 + 2 /* ALT + SIGN */];
++  char *q;
++
++  p = buf;
++  do {
++    *p++ = hexdigits[ul % base];
++  } while (ul /= base);
++  q = p;
++  if (lflag & ALT && *(p - 1) != '0') {
++    if (base == 8) {
++      *p++ = '0';
++    } else if (base == 16) {
++      *p++ = 'x';
++      *p++ = '0';
++    }
++  }
++  if (lflag & NEGATIVE)
++    *p++ = '-';
++  else if (lflag & SIGN)
++    *p++ = '+';
++  else if (lflag & SPACE)
++    *p++ = ' ';
++  width -= p - buf;
++  if (lflag & ZEROPAD) {
++    while (p > q)
++      putchar(*--p);
++  }
++  RADJUSTPAD();
++  RADJUSTZEROPAD();
++  do {
++    putchar(*--p);
++  } while (p > buf);
++  LADJUSTPAD();
++}
++
++#define GETARG (get_long (m68k_areg (regs, 7) + (3 + (idx++)) * 4))
++
++static uae_u32 emulib_Log(uaecptr _fmt) {
++  int ch, lflag, width, idx = 0;
++  const char *fmt = (char*)get_real_address(_fmt);
++  const char *p, *q;
++  uint32_t ul;
++
++  for (;;) {
++    while ((ch = *fmt++) != '%') {
++      if (ch == '\0')
++        return 0;
++      putchar(ch);
++    }
++    lflag = 0;
++    width = 0;
++  reswitch:
++    switch (ch = *fmt++) {
++      case '#':
++        lflag |= ALT;
++        goto reswitch;
++      case ' ':
++        lflag |= SPACE;
++        goto reswitch;
++      case '-':
++        lflag |= LADJUST;
++        goto reswitch;
++      case '+':
++        lflag |= SIGN;
++        goto reswitch;
++      case '0':
++        lflag |= ZEROPAD;
++        goto reswitch;
++      case '1':
++      case '2':
++      case '3':
++      case '4':
++      case '5':
++      case '6':
++      case '7':
++      case '8':
++      case '9':
++        for (;;) {
++          width *= 10;
++          width += ch - '0';
++          ch = *fmt;
++          if ((unsigned)ch - '0' > 9)
++            break;
++          ++fmt;
++        }
++      case 'l':
++      case 'j':
++      case 't':
++      case 'z':
++        goto reswitch;
++      case 'c':
++        ch = GETARG;
++        --width;
++        RADJUSTPAD();
++        putchar(ch & 0xFF);
++        LADJUSTPAD();
++        break;
++      case 's':
++        p = (char*)get_real_address(GETARG);
++        if (p == NULL)
++          p = "(null)";
++        for (q = p; *q != '\0'; ++q)
++          continue;
++        width -= q - p;
++        RADJUSTPAD();
++        while ((ch = (unsigned char)*p++))
++          putchar(ch);
++        LADJUSTPAD();
++        break;
++      case 'd':
++        ul = GETARG;
++        if ((int32_t)ul < 0) {
++          ul = -(int32_t)ul;
++          lflag |= NEGATIVE;
++        }
++        KPRINTN(10);
++        break;
++      case 'o':
++        KPRINT(8);
++        break;
++      case 'u':
++        KPRINT(10);
++        break;
++      case 'p':
++        lflag |= ALT;
++        /* FALLTHROUGH */
++      case 'x':
++        KPRINT(16);
++        break;
++      default:
++        if (ch == '\0')
++          return 0;
++        putchar(ch);
++        break;
++    }
++  }
++}
+Index: demoscene-toolchain/submodules/fs-uae/libfsemu/src/ml/input.c
+===================================================================
+--- demoscene-toolchain.orig/submodules/fs-uae/libfsemu/src/ml/input.c
++++ demoscene-toolchain/submodules/fs-uae/libfsemu/src/ml/input.c
+@@ -143,7 +143,7 @@ GList *fs_ml_input_list_custom_keyboards
+     char *keyboards_path = g_build_filename(
+         fs_data_dir(), "Devs", "Keyboards", NULL);
+ #endif
+-    printf("# Keyboards path: %s\n", keyboards_path);
++    fs_log("# Keyboards path: %s\n", keyboards_path);
+     GList *list = NULL;
+     GDir *dir = g_dir_open(keyboards_path, 0, NULL);
+     if (dir) {
+Index: demoscene-toolchain/submodules/fs-uae/src/memory.cpp
+===================================================================
+--- demoscene-toolchain.orig/submodules/fs-uae/src/memory.cpp
++++ demoscene-toolchain/submodules/fs-uae/src/memory.cpp
+@@ -1259,9 +1259,9 @@ static void log_kickstart(uae_u8 *mem, i
+ 	if (rd) {
+ 		char tmp[MAX_DPATH];
+ 		getromname(rd, tmp);
+-		printf("UAE: %s\n", tmp);
++		write_log("UAE: %s\n", tmp);
+ 	} else {
+-		printf("UAE: KS ROM %08x (%d bytes)\n", crc32, size);
++		write_log("UAE: KS ROM %08x (%d bytes)\n", crc32, size);
+ 	}
+ }
+ 
+Index: demoscene-toolchain/submodules/fs-uae/libfsemu/src/log.c
+===================================================================
+--- demoscene-toolchain.orig/submodules/fs-uae/libfsemu/src/log.c
++++ demoscene-toolchain/submodules/fs-uae/libfsemu/src/log.c
+@@ -64,7 +64,7 @@ void fs_config_set_log_file(const char *
+     }
+     log_data.file = g_fopen(path, "w");
+     if (log_data.file) {
+-        printf("LOG: %s\n", path);
++        printf("LOG: %s\n\n", path);
+         if (log_data.initial_path) {
+             FILE *f = g_fopen(log_data.initial_path, "r");
+             if (f) {

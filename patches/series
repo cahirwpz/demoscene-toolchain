@@ -7,3 +7,4 @@ fs-uae/debugger-on-stderr.diff
 fs-uae/exceptions-on-stderr.diff
 fs-uae/fix-without-ppc.diff
 fs-uae/print-memwatch.diff
+fs-uae/uaelib-log.diff

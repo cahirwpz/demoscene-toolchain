@@ -1,4 +1,3 @@
-gdb-8.3-macosx-fix.patch
 gcc-2.95.3-amigahunk-fix.patch
 fs-uae/break-on-illegal.diff
 fs-uae/break-on-sigint.diff

@@ -1,0 +1,89 @@
+diff --git demoscene.orig/submodules/binutils-gdb/gdb/dbxread.c demoscene/submodules/binutils-gdb/gdb/dbxread.c
+index 2df9f5c4d0..c33472bdab 100644
+--- demoscene.orig/submodules/binutils-gdb/gdb/dbxread.c
++++ demoscene/submodules/binutils-gdb/gdb/dbxread.c
+@@ -2544,7 +2544,11 @@ process_one_symbol (int type, int desc, CORE_ADDR valu, const char *name,
+       if (*name == '\000')
+ 	break;
+ 
++#if (DEFAULT_BFD_VEC == amiga_vec)
++      function_start_offset = section_offsets[SECT_OFF_TEXT (objfile)];
++#else
+       function_start_offset = 0;
++#endif
+ 
+       start_stabs ();
+       start_symtab (objfile, name, NULL, valu, language);
+@@ -2755,7 +2759,9 @@ process_one_symbol (int type, int desc, CORE_ADDR valu, const char *name,
+ 		}
+ 
+ 	      /* These addresses are absolute.  */
++#if (DEFAULT_BFD_VEC != amiga_vec)
+ 	      function_start_offset = valu;
++#endif
+ 
+ 	      within_function = 1;
+ 
+diff --git demoscene.orig/submodules/binutils-gdb/gdb/remote.c demoscene/submodules/binutils-gdb/gdb/remote.c
+index 2c31613575..fac21765da 100644
+--- demoscene.orig/submodules/binutils-gdb/gdb/remote.c
++++ demoscene/submodules/binutils-gdb/gdb/remote.c
+@@ -4095,11 +4095,6 @@ remote_target::~remote_target ()
+   delete rs->notif_state;
+ }
+ 
+-/* Query the remote side for the text, data and bss offsets.  */
+-#if (DEFAULT_BFD_VEC == amiga_vec)
+-CORE_ADDR text_offset;
+-#endif
+-
+ void
+ remote_target::get_offsets ()
+ {
+@@ -4249,9 +4244,6 @@ remote_target::get_offsets ()
+       if (SECT_OFF_BSS (symfile_objfile) != SECT_OFF_TEXT (symfile_objfile))
+ 	offs[SECT_OFF_BSS (symfile_objfile)] = bss_addr ? bss_addr : data_addr;
+     }
+-#if (DEFAULT_BFD_VEC == amiga_vec)
+-  text_offset = offs[SECT_OFF_TEXT (symfile_objfile)];
+-#endif
+   objfile_relocate (symfile_objfile, offs);
+ }
+ 
+diff --git demoscene.orig/submodules/binutils-gdb/gdb/symfile.c demoscene/submodules/binutils-gdb/gdb/symfile.c
+index 141e470998..a77f8af471 100644
+--- demoscene.orig/submodules/binutils-gdb/gdb/symfile.c
++++ demoscene/submodules/binutils-gdb/gdb/symfile.c
+@@ -2857,32 +2857,11 @@ allocate_compunit_symtab (struct objfile *objfile, const char *name)
+   return cu;
+ }
+ 
+-/* Hook CU to the objfile it comes from.  */
+-#if (DEFAULT_BFD_VEC == amiga_vec)
+-extern CORE_ADDR text_offset;
+-#endif
+-
+ void
+ add_compunit_symtab_to_objfile (struct compunit_symtab *cu)
+ {
+   cu->next = cu->objfile->compunit_symtabs;
+   cu->objfile->compunit_symtabs = cu;
+-#if (DEFAULT_BFD_VEC == amiga_vec)
+-  if (text_offset)
+-    {
+-      struct symtab *s;
+-      struct linetable *l;
+-      int i;
+-
+-      for ((s) = (cu) -> filetabs; (s) != NULL; (s) = (s) -> next)
+-      {
+-	l = SYMTAB_LINETABLE (s);
+-	if (l)
+-	for (i = 0; i < l->nitems; ++i)
+-		    l->item[i].pc += text_offset;
+-      }
+-    }
+-#endif
+ }
+ 
+ 

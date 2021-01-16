@@ -1,4 +1,6 @@
 gcc-2.95.3-amigahunk-fix.patch
+gdb-line-addr-fix.patch
+gdb-symbol-addr-fix.patch
 fs-uae/break-on-illegal.diff
 fs-uae/break-on-sigint.diff
 fs-uae/break-at-start.diff

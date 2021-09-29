@@ -3,7 +3,7 @@
 # > docker login
 # > docker push cahirwpz/demoscene-toolchain:latest
 
-FROM debian:buster-backports
+FROM debian:bullseye-backports
 
 WORKDIR /root
 

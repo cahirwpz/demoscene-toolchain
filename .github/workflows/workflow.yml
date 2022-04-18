@@ -13,6 +13,23 @@ jobs:
     - name: Download toolchain
       run: ./toolchain-m68k --quiet download
 
+    - name: Cache external archives
+      uses: actions/cache@v2
+      env:
+        cache-name: cache-externals
+      with:
+        path: |
+          - .build-m68k/archives
+          - submodules/binutils-gdb
+          - submodules/fd2pragma
+          - submodules/fd2sfd
+          - submodules/fs-uae
+          - submodules/gcc-2.95.3
+          - submodules/python-amidev
+          - submodules/python-lhafile
+          - submodules/sfdc
+        key: 20220418-1
+
     - name: Build toolchain
       run: ./toolchain-m68k --quiet build --prefix=/usr/local
 

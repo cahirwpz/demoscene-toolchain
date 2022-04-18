@@ -1,0 +1,26 @@
+name: Demoscene Toolchain
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: cahirwpz/demoscene-toolchain:latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Download toolchain
+      run: ./toolchain-m68k --quiet download
+
+    - name: Build toolchain
+      run: ./toolchain-m68k --quiet build --prefix=/usr/local
+
+    - name: Archive toolchain
+      run: tar cvzf demoscene-toolchain.tar.gz /usr/local
+
+    - name: Upload toolchain
+      uses: actions/upload-artifact@v2
+      with:
+        name: demoscene-toolchain
+        path: demoscene-toolchain.tar.gz

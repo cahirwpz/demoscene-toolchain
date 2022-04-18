@@ -8,36 +8,26 @@ jobs:
     container: cahirwpz/demoscene-toolchain:latest
 
     steps:
-    - uses: actions/checkout@v2
-
-    - name: Download toolchain
-      run: ./toolchain-m68k --quiet download
-
-    - name: Cache external archives
-      uses: actions/cache@v2
-      env:
-        cache-name: cache-externals
+    - uses: actions/checkout@v3
       with:
-        path: |
-          - .build-m68k/archives
-          - submodules/binutils-gdb
-          - submodules/fd2pragma
-          - submodules/fd2sfd
-          - submodules/fs-uae
-          - submodules/gcc-2.95.3
-          - submodules/python-amidev
-          - submodules/python-lhafile
-          - submodules/sfdc
-        key: 20220418-1
+        submodules: true
+
+    - name: Cache archives
+      id: cache-archives
+      uses: actions/cache@v3
+      with:
+        path: .build-m68k/archives
+        key: cache-archives-${{ hashFiles('.build-m68k/archives/**') }}
+
+    - name: Download archives
+      if: steps.cache-archives.outputs.cache-hit != 'true'
+      run: ./toolchain-m68k --quiet download
 
     - name: Build toolchain
       run: ./toolchain-m68k --quiet build --prefix=/usr/local
 
-    - name: Archive toolchain
-      run: tar cvzf demoscene-toolchain.tar.gz /usr/local
-
     - name: Upload toolchain
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: demoscene-toolchain
-        path: demoscene-toolchain.tar.gz
+        path: /usr/local

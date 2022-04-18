@@ -12,22 +12,17 @@ jobs:
       with:
         submodules: true
 
-    - name: Cache archives
-      id: cache-archives
-      uses: actions/cache@v3
-      with:
-        path: .build-m68k/archives
-        key: cache-archives-${{ hashFiles('.build-m68k/archives/**') }}
-
     - name: Download archives
-      if: steps.cache-archives.outputs.cache-hit != 'true'
       run: ./toolchain-m68k --quiet download
 
     - name: Build toolchain
       run: ./toolchain-m68k --quiet build --prefix=/usr/local
 
+    - name: Archive toolchain
+      run: tar cf demoscene-toolchain.tar /usr/local
+
     - name: Upload toolchain
       uses: actions/upload-artifact@v3
       with:
         name: demoscene-toolchain
-        path: /usr/local
+        path: demoscene-toolchain.tar

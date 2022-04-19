@@ -1,0 +1,10 @@
+--- bison-1.35/configure.orig	2022-04-19 08:11:21.011792124 +0200
++++ bison-1.35/configure	2022-04-19 08:10:26.673135492 +0200
+@@ -2811,6 +2811,7 @@
+ #line $LINENO "configure"
+ #include "confdefs.h"
+ #include <ctype.h>
++#include <stdlib.h>
+ #if ((' ' & 0x0FF) == 0x020)
+ # define ISLOWER(c) ('a' <= (c) && (c) <= 'z')
+ # define TOUPPER(c) (ISLOWER(c) ? 'A' + ((c) - 'a') : (c))

@@ -225,22 +225,26 @@ def build():
 
   unpack('{gawk}')
   update_autotools('{sources}/{gawk}')
+  patch('{gawk}')
   configure('{gawk}', '--prefix={host}')
   make('{gawk}', parallel=True)
   make('{gawk}', 'install')
 
   unpack('{flex}')
+  patch('{flex}')
   configure('{flex}', '--prefix={host}')
   make('{flex}')
   make('{flex}', 'install')
 
   unpack('{bison}')
   update_autotools('{sources}/{bison}/config')
+  patch('{bison}')
   configure('{bison}', '--prefix={host}')
   make('{bison}', parallel=True)
   make('{bison}', 'install')
 
   unpack('{texinfo}')
+  patch('{texinfo}')
   update_autotools('{sources}/{texinfo}/build-aux')
   configure('{texinfo}', '--prefix={host}')
   make('{texinfo}', parallel=True)

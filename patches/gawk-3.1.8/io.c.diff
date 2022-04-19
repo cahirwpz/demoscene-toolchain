@@ -1,0 +1,10 @@
+--- gawk-3.1.8/io.c.orig	2022-04-19 08:20:09.253253514 +0200
++++ gawk-3.1.8/io.c	2022-04-19 08:20:24.252652157 +0200
+@@ -39,6 +39,7 @@
+ 
+ #ifdef HAVE_TERMIOS_H
+ #include <termios.h>
++#include <sys/ioctl.h>
+ #endif
+ #ifdef HAVE_STROPTS_H
+ #include <stropts.h>

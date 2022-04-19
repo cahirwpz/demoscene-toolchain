@@ -1,0 +1,10 @@
+--- texinfo-4.12/info/termdep.h.orig	2022-04-19 08:15:00.885992538 +0200
++++ texinfo-4.12/info/termdep.h	2022-04-19 08:15:10.615998936 +0200
+@@ -30,6 +30,7 @@
+ 
+ #ifdef HAVE_TERMIOS_H
+ #  include <termios.h>
++#  include <sys/ioctl.h>
+ #else
+ #  if defined (HAVE_TERMIO_H)
+ #    include <termio.h>

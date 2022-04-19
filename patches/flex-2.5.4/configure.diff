@@ -1,0 +1,10 @@
+--- flex-2.5.4/configure.orig	2022-04-19 08:06:18.982800337 +0200
++++ flex-2.5.4/configure	2022-04-19 08:06:27.536478553 +0200
+@@ -868,6 +868,7 @@
+ #line 869 "configure"
+ #include "confdefs.h"
+ #include <ctype.h>
++#include <stdlib.h>
+ #define ISLOWER(c) ('a' <= (c) && (c) <= 'z')
+ #define TOUPPER(c) (ISLOWER(c) ? 'A' + ((c) - 'a') : (c))
+ #define XOR(e, f) (((e) && !(f)) || (!(e) && (f)))

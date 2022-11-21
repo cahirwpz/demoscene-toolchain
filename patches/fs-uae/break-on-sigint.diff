@@ -2,23 +2,23 @@ Index: demoscene-toolchain/submodules/fs-uae/src/od-fs/uaemisc.cpp
 ===================================================================
 --- demoscene-toolchain.orig/submodules/fs-uae/src/od-fs/uaemisc.cpp
 +++ demoscene-toolchain/submodules/fs-uae/src/od-fs/uaemisc.cpp
-@@ -9,6 +9,7 @@
- #include "uae.h"
+@@ -10,6 +10,7 @@
  #include "xwin.h"
+ #include "clipboard.h"
  #include "uae/fs.h"
 +#include "fs/conf.h"
  #include "../od-win32/debug_win32.h"
  
- #ifndef PICASSO96
-@@ -229,7 +230,6 @@ TCHAR *target_expand_environment (const
-     return strdup(path);
+ #include <fs/emu/hacks.h>
+@@ -203,7 +204,6 @@ TCHAR *target_expand_environment (const
+ 	}
  }
  
 -#if 0
  #include <signal.h>
  #include "debug.h"
  #ifdef __cplusplus_disabled
-@@ -246,11 +246,12 @@ static RETSIGTYPE sigbrkhandler (int foo
+@@ -220,11 +220,12 @@ static RETSIGTYPE sigbrkhandler (int foo
      signal (SIGINT, sigbrkhandler);
  #endif
  }
@@ -33,7 +33,7 @@ Index: demoscene-toolchain/submodules/fs-uae/src/od-fs/uaemisc.cpp
  #if defined(__unix) && !defined(__NeXT__)
      struct sigaction sa;
      sa.sa_handler = sigbrkhandler;
-@@ -263,7 +264,6 @@ void setup_brkhandler (void)
+@@ -237,7 +238,6 @@ void setup_brkhandler (void)
  #else
      signal (SIGINT, sigbrkhandler);
  #endif

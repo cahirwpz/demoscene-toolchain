@@ -1,0 +1,13 @@
+Index: demoscene-toolchain/submodules/fs-uae/fsemu/src/fsemu-data.c
+===================================================================
+--- demoscene-toolchain.orig/submodules/fs-uae/fsemu/src/fsemu-data.c
++++ demoscene-toolchain/submodules/fs-uae/fsemu/src/fsemu-data.c
+@@ -284,7 +284,7 @@ char *fsemu_data_file_path(const char *r
+         return path;
+     }
+ 
+-#ifdef FSEMU_OS_MACOS
++#ifdef FSEMU_OS_MACOS__DISABLE
+     char buffer[FSEMU_PATH_MAX];
+     fs_get_application_exe_dir(buffer, FSEMU_PATH_MAX);
+     path = g_build_filename(buffer, "..", "Resources", "Data", relative, NULL);

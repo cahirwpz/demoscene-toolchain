@@ -10,28 +10,6 @@ Index: demoscene-toolchain/submodules/fs-uae/src/od-fs/libamiga.cpp
      uae_log("Initializing core derived from %s\n", UAE_BASE_VERSION);
  
  #if 0
-Index: demoscene-toolchain/submodules/fs-uae/src/od-fs/writelog_fs.cpp
-===================================================================
---- demoscene-toolchain.orig/submodules/fs-uae/src/od-fs/writelog_fs.cpp
-+++ demoscene-toolchain/submodules/fs-uae/src/od-fs/writelog_fs.cpp
-@@ -174,8 +174,6 @@ void activate_console (void)
- 		return;
- #ifdef _WIN32
- 	SetForegroundWindow (GetConsoleWindow ());
--#else
--	STUB("");
- #endif
- }
- 
-@@ -341,8 +339,6 @@ void close_console (void)
- 		}
- 		FreeConsole ();
- 	}
--#else
--	STUB("");
- #endif
- 	consoleopen = 0;
- }
 Index: demoscene-toolchain/submodules/fs-uae/src/uaelib.cpp
 ===================================================================
 --- demoscene-toolchain.orig/submodules/fs-uae/src/uaelib.cpp
@@ -243,45 +221,3 @@ Index: demoscene-toolchain/submodules/fs-uae/src/uaelib_log.cpp
 +    }
 +  }
 +}
-Index: demoscene-toolchain/submodules/fs-uae/libfsemu/src/ml/input.c
-===================================================================
---- demoscene-toolchain.orig/submodules/fs-uae/libfsemu/src/ml/input.c
-+++ demoscene-toolchain/submodules/fs-uae/libfsemu/src/ml/input.c
-@@ -147,7 +147,7 @@ GList *fs_ml_input_list_custom_keyboards
-     char *keyboards_path = g_build_filename(
-         fs_data_dir(), "Devs", "Keyboards", NULL);
- #endif
--    printf("# Keyboards path: %s\n", keyboards_path);
-+    fs_log("# Keyboards path: %s\n", keyboards_path);
-     GList *list = NULL;
-     GDir *dir = g_dir_open(keyboards_path, 0, NULL);
-     if (dir) {
-Index: demoscene-toolchain/submodules/fs-uae/src/memory.cpp
-===================================================================
---- demoscene-toolchain.orig/submodules/fs-uae/src/memory.cpp
-+++ demoscene-toolchain/submodules/fs-uae/src/memory.cpp
-@@ -1503,9 +1503,9 @@ static void log_kickstart(uae_u8 *mem, i
- 	if (rd) {
- 		char tmp[MAX_DPATH];
- 		getromname(rd, tmp);
--		printf("ROM: %s\n", tmp);
-+		write_log("ROM: %s\n", tmp);
- 	} else {
--		printf("ROM: KS ROM %08x (%d bytes)\n", crc32, size);
-+		write_log("ROM: KS ROM %08x (%d bytes)\n", crc32, size);
- 	}
- #endif
- }
-Index: demoscene-toolchain/submodules/fs-uae/libfsemu/src/log.c
-===================================================================
---- demoscene-toolchain.orig/submodules/fs-uae/libfsemu/src/log.c
-+++ demoscene-toolchain/submodules/fs-uae/libfsemu/src/log.c
-@@ -64,7 +64,7 @@ void fs_config_set_log_file(const char *
-     }
-     log_data.file = g_fopen(path, "w");
-     if (log_data.file) {
--        fprintf(stderr, "LOGFILE: %s\n", path);
-+        fprintf(stderr, "LOGFILE: %s\n\n", path);
-         if (log_data.initial_path) {
-             FILE *f = g_fopen(log_data.initial_path, "r");
-             if (f) {

@@ -2,7 +2,7 @@ Index: demoscene-toolchain/submodules/fs-uae/src/newcpu.cpp
 ===================================================================
 --- demoscene-toolchain.orig/submodules/fs-uae/src/newcpu.cpp
 +++ demoscene-toolchain/submodules/fs-uae/src/newcpu.cpp
-@@ -3195,6 +3195,14 @@ uae_u32 REGPARAM2 op_illg (uae_u32 opcod
+@@ -4139,6 +4139,14 @@ uae_u32 REGPARAM2 op_illg (uae_u32 opcod
  		}
  	}
  

@@ -1,0 +1,197 @@
+Index: demoscene-toolchain/submodules/fs-uae/fsemu/src/fsemu-video.c
+===================================================================
+--- demoscene-toolchain.orig/submodules/fs-uae/fsemu/src/fsemu-video.c
++++ demoscene-toolchain/submodules/fs-uae/fsemu/src/fsemu-video.c
+@@ -383,7 +383,7 @@ void fsemu_video_post_frame(fsemu_video_
+ 
+         int from = MAX(last_skipped_frame, fsemu_video.last_retrieved_frame + 1);
+         for (int i = from; i < frame->number; i++) {
+-            printf("SKIPPED FRAME %d\n", i);
++            // printf("SKIPPED FRAME %d\n", i);
+             last_skipped_frame = i;
+             FSEMU_FRAMEINFO(i).render_skipped = true;
+         }
+Index: demoscene-toolchain/submodules/fs-uae/fsemu/src/fsemu-audiobuffer.c
+===================================================================
+--- demoscene-toolchain.orig/submodules/fs-uae/fsemu/src/fsemu-audiobuffer.c
++++ demoscene-toolchain/submodules/fs-uae/fsemu/src/fsemu-audiobuffer.c
+@@ -348,7 +348,7 @@ static double pid_controller_step(int *e
+     fsemu_audio_frame_stats_t stats;
+     fsemu_audio_frame_stats(fsemu_frame_counter() - 1, &stats);
+ 
+-#if 1
++#if 0
+     if (stats.avg_latency_us != latency_avg_2) {
+         printf(
+             "WARNING: Adjust %d vs %d\n", stats.avg_latency_us, latency_avg_2);
+Index: demoscene-toolchain/submodules/fs-uae/fsemu/src/fsemu-frame.c
+===================================================================
+--- demoscene-toolchain.orig/submodules/fs-uae/fsemu/src/fsemu-frame.c
++++ demoscene-toolchain/submodules/fs-uae/fsemu/src/fsemu-frame.c
+@@ -171,7 +171,7 @@ void fsemu_frame_end(void)
+ 
+     int64_t now = fsemu_time_us();
+     if (now > fsemu_frame_end_at + 1000) {
+-        printf(
++        fsemu_log(
+             "fsemu_frame_end called %d ms too late "
+             "(now=%lld, fsemu_frame_end_at=%lld)\n",
+             (int) (now - fsemu_frame_end_at) / 1000,
+@@ -182,7 +182,7 @@ void fsemu_frame_end(void)
+         fsemu_frame_wait_until_frame_end();
+         now = fsemu_time_us();
+         if (now > fsemu_frame_end_at + 1000) {
+-            printf("Overslept %d\n",
++            fsemu_log("Overslept %d\n",
+                    (int) (fsemu_time_us() - fsemu_frame_end_at));
+         }
+         fsemu_frame_add_sleep_time(0);
+@@ -438,7 +438,7 @@ static void fsemu_frame_update_timing_ti
+     if (late_frames >= 10) {
+         // We might not be able to catch up normally, so we reset origin.
+         fsemu_frame_origin_at = now;
+-        printf("\n--------------------------------\n\n");
++        fsemu_frame_log("\n--------------------------------\n\n");
+         // FIXME: REGISTER THIS AS AN UNDERRUN EVENT
+     }
+ 
+Index: demoscene-toolchain/submodules/fs-uae/fsemu/src/fsemu-inputport.c
+===================================================================
+--- demoscene-toolchain.orig/submodules/fs-uae/fsemu/src/fsemu-inputport.c
++++ demoscene-toolchain/submodules/fs-uae/fsemu/src/fsemu-inputport.c
+@@ -97,7 +97,7 @@ static void fsemu_inputport_map_custom_a
+ static void fsemu_inputport_map_custom_actions(fsemu_inputmode_t *mode,
+                                                const char *prefix)
+ {
+-    printf("fsemu_inputport_map_custom_actions prefix=%s\n", prefix);
++    fsemu_log("fsemu_inputport_map_custom_actions prefix=%s\n", prefix);
+     fsemu_inputport_map_custom_action(
+         mode, prefix, "button_a", FSEMU_INPUTDEVICE_BUTTON_A);
+     fsemu_inputport_map_custom_action(
+Index: demoscene-toolchain/submodules/fs-uae/fsemu/src/fsemu-data.c
+===================================================================
+--- demoscene-toolchain.orig/submodules/fs-uae/fsemu/src/fsemu-data.c
++++ demoscene-toolchain/submodules/fs-uae/fsemu/src/fsemu-data.c
+@@ -16,7 +16,7 @@
+ 
+ // ----------------------------------------------------------------------------
+ 
+-int fsemu_data_log_level = FSEMU_LOG_LEVEL_DEBUG;
++int fsemu_data_log_level = FSEMU_LOG_LEVEL_INFO;
+ 
+ /*
+ static struct fsemu_titlebar {
+@@ -200,7 +200,7 @@ bool fsemu_data_development_mode(void)
+         fs_get_application_exe_dir(executable_dir, FSEMU_PATH_MAX);
+         char *path = g_build_filename(
+             executable_dir, "fsemu", "src", "fsemu-all.c", NULL);
+-        printf("%s\n", path);
++        fsemu_log("%s\n", path);
+         if (fsemu_path_exists(path)) {
+             development_mode = true;
+         }
+@@ -390,7 +390,7 @@ void fsemu_data_load(const char *name, v
+     *data_size = 0;
+     char *path = fsemu_data_file_path(name);
+     if (!path) {
+-        fsemu_data_log_warning("Could not find data file '%s'\n", name);
++        fsemu_data_log("Could not find data file '%s'\n", name);
+         return;
+     }
+     fsemu_data_log("Path: %s\n", path);
+Index: demoscene-toolchain/submodules/fs-uae/src/fsuae/fsuae-main.c
+===================================================================
+--- demoscene-toolchain.orig/submodules/fs-uae/src/fsuae/fsuae-main.c
++++ demoscene-toolchain/submodules/fs-uae/src/fsuae/fsuae-main.c
+@@ -1717,12 +1717,14 @@ int main(int argc, char *argv[])
+     fs_set_prgname("fs-uae");
+     fs_set_application_name("Amiga Emulator");
+ 
++#if 0
+     fprintf(stderr,
+             COPYRIGHT_NOTICE,
+             PACKAGE_VERSION,
+             OS_NAME_2,
+             ARCH_NAME_2,
+             UAE_BASE_VERSION);
++#endif
+     fsemu_log_with_level(FSEMU_LOG_LEVEL_INFO,
+                          COPYRIGHT_NOTICE,
+                          PACKAGE_VERSION,
+Index: demoscene-toolchain/submodules/fs-uae/src/debugmem.cpp
+===================================================================
+--- demoscene-toolchain.orig/submodules/fs-uae/src/debugmem.cpp
++++ demoscene-toolchain/submodules/fs-uae/src/debugmem.cpp
+@@ -2086,7 +2086,7 @@ static bool debugger_load_library(const
+ 	if (!zf) {
+ 		zf = zfile_fopen(name, _T("rb"));
+ 		if (!zf) {
+-			console_out_f(_T("Couldn't open '%s'\n"), name);
++			// console_out_f(_T("Couldn't open '%s'\n"), name);
+ 			return false;
+ 		}
+ 	}
+Index: demoscene-toolchain/submodules/fs-uae/src/od-fs/writelog_fs.cpp
+===================================================================
+--- demoscene-toolchain.orig/submodules/fs-uae/src/od-fs/writelog_fs.cpp
++++ demoscene-toolchain/submodules/fs-uae/src/od-fs/writelog_fs.cpp
+@@ -174,8 +174,6 @@ void activate_console (void)
+ 		return;
+ #ifdef _WIN32
+ 	SetForegroundWindow (GetConsoleWindow ());
+-#else
+-	STUB("");
+ #endif
+ }
+ 
+@@ -341,8 +339,6 @@ void close_console (void)
+ 		}
+ 		FreeConsole ();
+ 	}
+-#else
+-	STUB("");
+ #endif
+ 	consoleopen = 0;
+ }
+Index: demoscene-toolchain/submodules/fs-uae/libfsemu/src/log.c
+===================================================================
+--- demoscene-toolchain.orig/submodules/fs-uae/libfsemu/src/log.c
++++ demoscene-toolchain/submodules/fs-uae/libfsemu/src/log.c
+@@ -64,7 +64,7 @@ void fs_config_set_log_file(const char *
+     }
+     log_data.file = g_fopen(path, "w");
+     if (log_data.file) {
+-        fprintf(stderr, "LOGFILE: %s\n", path);
++        printf("LOGFILE: %s\n", path);
+         if (log_data.initial_path) {
+             FILE *f = g_fopen(log_data.initial_path, "r");
+             if (f) {
+Index: demoscene-toolchain/submodules/fs-uae/src/memory.cpp
+===================================================================
+--- demoscene-toolchain.orig/submodules/fs-uae/src/memory.cpp
++++ demoscene-toolchain/submodules/fs-uae/src/memory.cpp
+@@ -1503,9 +1503,9 @@ static void log_kickstart(uae_u8 *mem, i
+ 	if (rd) {
+ 		char tmp[MAX_DPATH];
+ 		getromname(rd, tmp);
+-		printf("ROM: %s\n", tmp);
++		fs_log("ROM: %s\n", tmp);
+ 	} else {
+-		printf("ROM: KS ROM %08x (%d bytes)\n", crc32, size);
++		fs_log("ROM: KS ROM %08x (%d bytes)\n", crc32, size);
+ 	}
+ #endif
+ }
+Index: demoscene-toolchain/submodules/fs-uae/libfsemu/src/ml/input.c
+===================================================================
+--- demoscene-toolchain.orig/submodules/fs-uae/libfsemu/src/ml/input.c
++++ demoscene-toolchain/submodules/fs-uae/libfsemu/src/ml/input.c
+@@ -147,7 +147,7 @@ GList *fs_ml_input_list_custom_keyboards
+     char *keyboards_path = g_build_filename(
+         fs_data_dir(), "Devs", "Keyboards", NULL);
+ #endif
+-    printf("# Keyboards path: %s\n", keyboards_path);
++    fs_log("# Keyboards path: %s\n", keyboards_path);
+     GList *list = NULL;
+     GDir *dir = g_dir_open(keyboards_path, 0, NULL);
+     if (dir) {

@@ -1,0 +1,13 @@
+Index: demoscene-toolchain/submodules/binutils-gdb/gdb/dbxread.c
+===================================================================
+--- demoscene-toolchain.orig/submodules/binutils-gdb/gdb/dbxread.c
++++ demoscene-toolchain/submodules/binutils-gdb/gdb/dbxread.c
+@@ -2581,7 +2581,7 @@ process_one_symbol (int type, int desc,
+ 
+       /* Relocate for dynamic loading and for ELF acc
+          function-relative symbols.  */
+-      valu += function_start_offset;
++      /* valu += function_start_offset; */
+ 
+       /* GCC 2.95.3 emits the first N_SLINE stab somewhere in the
+ 	 middle of the prologue instead of right at the start of the

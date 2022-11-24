@@ -2,46 +2,29 @@ Index: demoscene-toolchain/submodules/fs-uae/src/od-fs/libamiga.cpp
 ===================================================================
 --- demoscene-toolchain.orig/submodules/fs-uae/src/od-fs/libamiga.cpp
 +++ demoscene-toolchain/submodules/fs-uae/src/od-fs/libamiga.cpp
-@@ -130,7 +130,7 @@ void amiga_floppy_set_writable_images(in
+@@ -146,6 +146,7 @@ void amiga_floppy_set_writable_images(in
  
  int amiga_init(void)
  {
--    printf("UAE: Initializing core derived from %s\n", UAE_BASE_VERSION);
 +    setvbuf(stdout, NULL, _IOLBF, 0);
-     write_log("UAE: Initializing core derived from %s\n", UAE_BASE_VERSION);
+     uae_log("Initializing core derived from %s\n", UAE_BASE_VERSION);
  
-     uae_register_main_thread();
-Index: demoscene-toolchain/submodules/fs-uae/src/od-fs/uaemisc.cpp
-===================================================================
---- demoscene-toolchain.orig/submodules/fs-uae/src/od-fs/uaemisc.cpp
-+++ demoscene-toolchain/submodules/fs-uae/src/od-fs/uaemisc.cpp
-@@ -129,11 +129,9 @@ TCHAR console_getch (void) {
- }
- 
- void close_console (void) {
--    STUB("");
- }
- 
- extern void activate_console (void) {
--    STUB("");
- }
- 
- bool console_isch (void)
+ #if 0
 Index: demoscene-toolchain/submodules/fs-uae/src/uaelib.cpp
 ===================================================================
 --- demoscene-toolchain.orig/submodules/fs-uae/src/uaelib.cpp
 +++ demoscene-toolchain/submodules/fs-uae/src/uaelib.cpp
-@@ -360,6 +360,8 @@ static int native_dos_op (uae_u32 mode,
+@@ -349,6 +349,8 @@ static int native_dos_op(TrapContext *ct
  	return 0;
  }
  
 +#include "uaelib_log.cpp"
 +
- static uae_u32 uaelib_demux_common(uae_u32 ARG0, uae_u32 ARG1, uae_u32 ARG2, uae_u32 ARG3, uae_u32 ARG4, uae_u32 ARG5)
+ static uae_u32 uaelib_demux_common(TrapContext *ctx, uae_u32 ARG0, uae_u32 ARG1, uae_u32 ARG2, uae_u32 ARG3, uae_u32 ARG4, uae_u32 ARG5)
  {
  	switch (ARG0) {
-@@ -381,6 +383,8 @@ static uae_u32 uaelib_demux_common(uae_u
- 		case 14: return emulib_GetDisk(ARG1, ARG2);
+@@ -370,6 +372,8 @@ static uae_u32 uaelib_demux_common(TrapC
+ 		case 14: return emulib_GetDisk(ctx, ARG1, ARG2);
  		case 15: return emulib_Debug();
  
 + 		case 40: return emulib_Log(ARG1);
@@ -238,45 +221,3 @@ Index: demoscene-toolchain/submodules/fs-uae/src/uaelib_log.cpp
 +    }
 +  }
 +}
-Index: demoscene-toolchain/submodules/fs-uae/libfsemu/src/ml/input.c
-===================================================================
---- demoscene-toolchain.orig/submodules/fs-uae/libfsemu/src/ml/input.c
-+++ demoscene-toolchain/submodules/fs-uae/libfsemu/src/ml/input.c
-@@ -143,7 +143,7 @@ GList *fs_ml_input_list_custom_keyboards
-     char *keyboards_path = g_build_filename(
-         fs_data_dir(), "Devs", "Keyboards", NULL);
- #endif
--    printf("# Keyboards path: %s\n", keyboards_path);
-+    fs_log("# Keyboards path: %s\n", keyboards_path);
-     GList *list = NULL;
-     GDir *dir = g_dir_open(keyboards_path, 0, NULL);
-     if (dir) {
-Index: demoscene-toolchain/submodules/fs-uae/src/memory.cpp
-===================================================================
---- demoscene-toolchain.orig/submodules/fs-uae/src/memory.cpp
-+++ demoscene-toolchain/submodules/fs-uae/src/memory.cpp
-@@ -1259,9 +1259,9 @@ static void log_kickstart(uae_u8 *mem, i
- 	if (rd) {
- 		char tmp[MAX_DPATH];
- 		getromname(rd, tmp);
--		printf("UAE: %s\n", tmp);
-+		write_log("UAE: %s\n", tmp);
- 	} else {
--		printf("UAE: KS ROM %08x (%d bytes)\n", crc32, size);
-+		write_log("UAE: KS ROM %08x (%d bytes)\n", crc32, size);
- 	}
- }
- 
-Index: demoscene-toolchain/submodules/fs-uae/libfsemu/src/log.c
-===================================================================
---- demoscene-toolchain.orig/submodules/fs-uae/libfsemu/src/log.c
-+++ demoscene-toolchain/submodules/fs-uae/libfsemu/src/log.c
-@@ -64,7 +64,7 @@ void fs_config_set_log_file(const char *
-     }
-     log_data.file = g_fopen(path, "w");
-     if (log_data.file) {
--        printf("LOG: %s\n", path);
-+        printf("LOG: %s\n\n", path);
-         if (log_data.initial_path) {
-             FILE *f = g_fopen(log_data.initial_path, "r");
-             if (f) {

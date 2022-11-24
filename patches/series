@@ -11,3 +11,4 @@ fs-uae/uaelib-log.diff
 fs-uae/data-path-macos.diff
 fs-uae/silence-logs.diff
 fs-uae/debug-msg-fix.diff
+gdb-line-addr-fix.patch

@@ -1,31 +1,31 @@
-Index: demoscene-toolchain/submodules/fs-uae/src/od-fs/uaemisc.cpp
+Index: demoscene-toolchain/submodules/fs-uae/src/od-fs/writelog_fs.cpp
 ===================================================================
---- demoscene-toolchain.orig/submodules/fs-uae/src/od-fs/uaemisc.cpp
-+++ demoscene-toolchain/submodules/fs-uae/src/od-fs/uaemisc.cpp
-@@ -85,7 +85,7 @@ void sleep_millis (int ms) {
- void console_out_f(const TCHAR *fmt, ...) {
+--- demoscene-toolchain.orig/submodules/fs-uae/src/od-fs/writelog_fs.cpp
++++ demoscene-toolchain/submodules/fs-uae/src/od-fs/writelog_fs.cpp
+@@ -479,7 +479,7 @@ void console_out_f (const TCHAR *format,
+ #else
      va_list arg_ptr;
-     va_start(arg_ptr, fmt);
--    vprintf(fmt, arg_ptr);
-+    vfprintf(stderr, fmt, arg_ptr);
+     va_start(arg_ptr, format);
+-    vprintf(format, arg_ptr);
++    vfprintf(stderr, format, arg_ptr);
      va_end(arg_ptr);
+ 
+ #endif
+@@ -490,7 +490,7 @@ void console_out (const TCHAR *txt)
+ #ifdef _WIN32
+ 	console_put (txt);
+ #else
+-	printf("%s", txt);
++	fprintf(stderr, "%s", txt);
+ #endif
  }
  
-@@ -102,7 +102,7 @@ void f_out(void *f, const TCHAR *format,
+@@ -596,7 +596,7 @@ void console_flush (void)
+ #ifdef _WIN32
+ 	flushconsole ();
+ #else
+-	fflush(stdout);
++	fflush(stderr);
+ #endif
  }
  
- void console_out (const TCHAR *msg) {
--    printf("%s", msg);
-+    fprintf(stderr, "%s", msg);
- }
- 
- int console_get_gui (TCHAR *out, int maxlen) {
-@@ -120,7 +120,7 @@ int console_get(TCHAR *in, int maxlen) {
- }
- 
- void console_flush(void) {
--    fflush(stdout);
-+    fflush(stderr);
- }
- 
- TCHAR console_getch (void) {

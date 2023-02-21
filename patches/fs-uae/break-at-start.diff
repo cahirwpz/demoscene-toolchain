@@ -1,8 +1,8 @@
-Index: demoscene-toolchain/submodules/fs-uae/src/fs-uae/main.c
+Index: demoscene-toolchain/submodules/fs-uae/src/fsuae/fsuae-main.c
 ===================================================================
---- demoscene-toolchain.orig/submodules/fs-uae/src/fs-uae/main.c
-+++ demoscene-toolchain/submodules/fs-uae/src/fs-uae/main.c
-@@ -531,6 +531,10 @@ static void on_init(void)
+--- demoscene-toolchain.orig/submodules/fs-uae/src/fsuae/fsuae-main.c
++++ demoscene-toolchain/submodules/fs-uae/src/fsuae/fsuae-main.c
+@@ -803,6 +803,10 @@ static void on_init(void)
      fs_uae_configure_input();
      fs_uae_configure_directories();
  
@@ -12,12 +12,12 @@ Index: demoscene-toolchain/submodules/fs-uae/src/fs-uae/main.c
 +
      if (fs_config_get_int("save_state_compression") == 0) {
          amiga_set_save_state_compression(0);
-     }
+     } else {
 Index: demoscene-toolchain/submodules/fs-uae/src/od-fs/stubs.cpp
 ===================================================================
 --- demoscene-toolchain.orig/submodules/fs-uae/src/od-fs/stubs.cpp
 +++ demoscene-toolchain/submodules/fs-uae/src/od-fs/stubs.cpp
-@@ -188,7 +188,7 @@ void target_fixup_options (struct uae_pr
+@@ -179,7 +179,7 @@ void target_fixup_options(struct uae_pre
  }
  
  int debuggable (void) {

@@ -1,0 +1,13 @@
+Index: demoscene-toolchain/submodules/fs-uae/src/debug.cpp
+===================================================================
+--- demoscene-toolchain.orig/submodules/fs-uae/src/debug.cpp
++++ demoscene-toolchain/submodules/fs-uae/src/debug.cpp
+@@ -6474,7 +6474,7 @@ void debug (void)
+ 				return;
+ 			}
+ 			if (bp > 0)
+-				console_out_f(_T("Breakpoint %d triggered.\n"), bp - 1);
++				console_out_f(_T("Breakpoint at %x\n"), pc);
+ 			debug_cycles();
+ 		}
+ 	} else {

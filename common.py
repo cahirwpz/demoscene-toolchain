@@ -242,7 +242,7 @@ def download(url, name):
   meta = u.info()
   try:
     size = int(meta['Content-Length'])
-  except IndexError:
+  except (IndexError, TypeError):
     size = None
 
   if size:

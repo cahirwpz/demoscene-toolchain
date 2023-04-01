@@ -26,7 +26,7 @@ URLS = \
     'shrinkler-4.7.tar.gz'),
    ('ftp://ftp.uk.freesbie.org/sites/distfiles.gentoo.org/distfiles/' +
     'flex-2.5.4a.tar.gz', 'flex-2.5.4.tar.gz'),
-   ('http://www.haage-partner.de/download/AmigaOS/NDK39.lha', 'NDK_3.9.lha'),
+   ('http://hp.alinea-computer.de/AmigaOS/NDK39.lha', 'NDK_3.9.lha'),
    ('http://server.owl.de/~frank/tags/vasm1_8h.tar.gz', 'vasm.tar.gz')]
 
 

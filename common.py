@@ -68,35 +68,6 @@ def panic(*args):
 
 
 @fill_in_args
-def cmpver(op, v1, v2):
-  assert op in ['eq', 'lt', 'gt']
-
-  v1 = [int(x) for x in v1.split('.')]
-  v2 = [int(x) for x in v2.split('.')]
-
-  def _cmp(l1, l2):
-    if not len(l1) and not len(l2):
-      return 0
-    if not len(l1):
-      return -1
-    if not len(l2):
-      return 1
-
-    if l1[0] < l2[0]:
-      return -1
-    if l1[0] > l2[0]:
-      return 1
-    if l1[0] == l2[0]:
-      return _cmp(l1[1:], l2[1:])
-
-  res = _cmp(v1, v2)
-
-  return ((op == 'eq' and res == 0) or
-          (op == 'lt' and res < 0) or
-          (op == 'gt' and res > 0))
-
-
-@fill_in_args
 def topdir(name):
   if not path.isabs(name):
     name = path.abspath(name)
@@ -300,18 +271,6 @@ def unarc(name):
 
 
 @fill_in_args
-def fix_python_shebang(filename, prefix):
-  PYTHON = fill_in('{python}')
-  SITEDIR = path.join(prefix, '{sitedir}')
-  for line in fileinput.input(files=[filename], inplace=True):
-    line = line.rstrip()
-    if line.startswith('#!'):
-      print('#!/usr/bin/env PYTHONPATH=%s %s' % (SITEDIR, PYTHON))
-    else:
-      print(line.rstrip())
-
-
-@fill_in_args
 def add_site_dir(dirname, py_ver):
   dirname = path.join(dirname, 'lib', py_ver, 'site-packages')
   info('adding "%s" to python site dirs', topdir(dirname))
@@ -380,14 +339,6 @@ def extend_pythonpath(prefix):
     return ':'.join([os.environ['PYTHONPATH'], SITEDIR])
   except KeyError:
     return SITEDIR
-
-
-@recipe('pyinstall', 1)
-def pyinstall(name, **kwargs):
-  prefix = kwargs.get('prefix', '{prefix}')
-  mkdir(path.join(prefix, '{sitedir}'))
-  with env(PYTHONPATH=extend_pythonpath(prefix)):
-    execute('{python}', '-m', 'easy_install', '--prefix=' + prefix, name)
 
 
 @recipe('pysetup', 1)
@@ -531,8 +482,8 @@ def require_header(headers, lang='c', errmsg='', symbol=None, value=None):
   panic(errmsg)
 
 
-__all__ = ['setvar', 'panic', 'cmpver', 'find_executable', 'chmod', 'execute',
+__all__ = ['setvar', 'panic', 'find_executable', 'chmod', 'execute',
            'rmtree', 'mkdir', 'copy', 'copytree', 'unarc', 'fetch', 'cwd',
            'symlink', 'remove', 'move', 'find', 'textfile', 'env', 'path',
-           'add_site_dir', 'pysetup', 'pyinstall', 'recipe', 'unpack', 'patch',
+           'add_site_dir', 'pysetup', 'recipe', 'unpack', 'patch',
            'configure', 'make', 'require_header', 'touch', 'pypip']

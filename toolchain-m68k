@@ -365,9 +365,6 @@ def build():
     make('{fsuae}', parallel=True)
     make('{fsuae}', 'install')
 
-  unpack('python-amidev', work_dir='{build}')
-  pysetup('python-amidev')
-
   unpack('{shrinkler}', work_dir='{build}')
   make('{shrinkler}')
   install_shrinkler()

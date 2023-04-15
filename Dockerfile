@@ -12,5 +12,6 @@ RUN apt-get install -y --no-install-recommends \
             automake bison ca-certificates flex git-core gettext gperf \
             gcc g++ libc6-dev libglib2.0-dev libncurses-dev libpng-dev \
             libsdl2-dev libsdl2-ttf-dev libopenal-dev libtool make patch \
-            pkg-config python3 libpython3-dev python3-setuptools quilt \
-            subversion texinfo zip
+            pkg-config python3 python3-dev python3-pip quilt texinfo zip
+COPY requirements.txt .
+RUN pip3 install setuptools wheel && pip3 install -r requirements.txt

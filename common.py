@@ -7,12 +7,10 @@ from glob import glob
 from logging import debug, info, error
 from os import path
 import contextlib
-from distutils import spawn, sysconfig
-import fileinput
+from distutils import spawn
 import os
 from multiprocessing import cpu_count
 import shutil
-import site
 import subprocess
 import sys
 import tarfile
@@ -270,13 +268,6 @@ def unarc(name):
     raise RuntimeError('Unrecognized archive: "%s"', name)
 
 
-@fill_in_args
-def add_site_dir(dirname, py_ver):
-  dirname = path.join(dirname, 'lib', py_ver, 'site-packages')
-  info('adding "%s" to python site dirs', topdir(dirname))
-  site.addsitedir(dirname)
-
-
 @contextlib.contextmanager
 def cwd(name):
   old = os.getcwd()
@@ -331,31 +322,6 @@ def recipe(name, nargs=0):
         info('already done "%s"', target)
     return wrapper
   return real_decorator
-
-
-def extend_pythonpath(prefix):
-  SITEDIR = path.join(prefix, '{sitedir}')
-  try:
-    return ':'.join([os.environ['PYTHONPATH'], SITEDIR])
-  except KeyError:
-    return SITEDIR
-
-
-@recipe('pysetup', 1)
-def pysetup(name, **kwargs):
-  prefix = kwargs.get('prefix', '{prefix}')
-  mkdir(path.join(prefix, '{sitedir}'))
-  with env(PYTHONPATH=extend_pythonpath(prefix)):
-    with cwd(path.join('{build}', name)):
-      execute('{python}', 'setup.py', 'build')
-      execute('{python}', 'setup.py', 'install', '--prefix=' + prefix)
-
-
-@recipe('pypip', 1)
-def pypip(name, **kwargs):
-  prefix = kwargs.get('prefix', '{prefix}')
-  with env(PYTHONPATH=extend_pythonpath(prefix)):
-    execute('{python}', '-m', 'pip', 'install', '--prefix=' + prefix, name)
 
 
 @recipe('fetch', 1)
@@ -482,8 +448,7 @@ def require_header(headers, lang='c', errmsg='', symbol=None, value=None):
   panic(errmsg)
 
 
-__all__ = ['setvar', 'panic', 'find_executable', 'chmod', 'execute',
-           'rmtree', 'mkdir', 'copy', 'copytree', 'unarc', 'fetch', 'cwd',
-           'symlink', 'remove', 'move', 'find', 'textfile', 'env', 'path',
-           'add_site_dir', 'pysetup', 'recipe', 'unpack', 'patch',
-           'configure', 'make', 'require_header', 'touch', 'pypip']
+__all__ = ['setvar', 'panic', 'find_executable', 'chmod', 'execute', 'rmtree',
+           'mkdir', 'copy', 'copytree', 'fetch', 'cwd', 'symlink', 'remove',
+           'move', 'find', 'textfile', 'env', 'path', 'recipe', 'unpack',
+           'patch', 'configure', 'make', 'require_header', 'touch']

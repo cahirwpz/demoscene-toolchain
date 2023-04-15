@@ -9,8 +9,6 @@ from os import environ
 import argparse
 import logging
 import platform
-import re
-import string
 import sys
 
 environ['DONTWRITEBYTECODE'] = 'y'
@@ -30,7 +28,9 @@ URLS = \
    ('http://phoenix.owl.de/tags/vasm1_9c.tar.gz', 'vasm.tar.gz')]
 
 
-from common import * # NOQA
+from common import (setvar, execute, rmtree, configure, unpack, path, panic,
+        mkdir, env, make, touch, patch, require_header, copy, cwd, recipe,
+        find_executable, textfile, chmod, copytree, move, find, fetch)
 
 
 @recipe('target-prepare')
@@ -147,8 +147,6 @@ def download():
 
 
 def build():
-  py_ver = 'python%d.%d' % (sys.version_info.major, sys.version_info.minor)
-
   for var in list(environ.keys()):
     if var not in ['_', 'LOGNAME', 'HOME', 'SHELL', 'TMPDIR', 'PWD']:
       del environ[var]
@@ -174,8 +172,6 @@ def build():
   environ['PATH'] = PATH
   environ['LANG'] = 'C'
   environ['TERM'] = 'xterm'
-
-  add_site_dir('{prefix}', py_ver)
 
   CC = find_executable(CC)
   CXX = find_executable(CXX)
@@ -215,14 +211,6 @@ def build():
 
   require_header(['ncurses.h', 'ncurses/ncurses.h'],
                  lang='c', errmsg='libncurses-dev package missing')
-
-  # require_header([path.join(py_ver, 'Python.h')],
-  #                lang='c', errmsg='python-dev package missing')
-
-  execute('git', 'submodule', 'init', 'submodules/python-lhafile')
-  execute('git', 'submodule', 'update', 'submodules/python-lhafile')
-  unpack('python-lha', work_dir='{build}')
-  pysetup('python-lha')
 
   download()
   execute('quilt', 'push', '-a', ignore_errors=True)
@@ -403,8 +391,7 @@ if __name__ == "__main__":
                       help='installation directory')
   args = parser.parse_args()
 
-  setvar(top=path.abspath(path.dirname(sys.argv[0])),
-         py_ver='python%d.%d' % (sys.version_info.major, sys.version_info.minor))
+  setvar(top=path.abspath(path.dirname(sys.argv[0])))
 
   setvar(m4='m4-1.4.17',
          gawk='gawk-3.1.8',
@@ -420,7 +407,6 @@ if __name__ == "__main__":
          shrinkler='Shrinkler-4.7',
          target='m68k-amigaos',
          python=sys.executable,
-         sitedir=path.join('lib', '{py_ver}', 'site-packages'),
          patches=path.join('{top}', 'patches'),
          stamps=path.join('{top}', '.build-m68k', 'stamps'),
          build=path.join('{top}', '.build-m68k', 'build'),

@@ -7,12 +7,10 @@ from glob import glob
 from logging import debug, info, error
 from os import path
 import contextlib
-from distutils import spawn, sysconfig
-import fileinput
+from distutils import spawn
 import os
 from multiprocessing import cpu_count
 import shutil
-import site
 import subprocess
 import sys
 import tarfile
@@ -65,35 +63,6 @@ path.relpath = fill_in_args(path.relpath)
 def panic(*args):
   error(*args)
   sys.exit(1)
-
-
-@fill_in_args
-def cmpver(op, v1, v2):
-  assert op in ['eq', 'lt', 'gt']
-
-  v1 = [int(x) for x in v1.split('.')]
-  v2 = [int(x) for x in v2.split('.')]
-
-  def _cmp(l1, l2):
-    if not len(l1) and not len(l2):
-      return 0
-    if not len(l1):
-      return -1
-    if not len(l2):
-      return 1
-
-    if l1[0] < l2[0]:
-      return -1
-    if l1[0] > l2[0]:
-      return 1
-    if l1[0] == l2[0]:
-      return _cmp(l1[1:], l2[1:])
-
-  res = _cmp(v1, v2)
-
-  return ((op == 'eq' and res == 0) or
-          (op == 'lt' and res < 0) or
-          (op == 'gt' and res > 0))
 
 
 @fill_in_args
@@ -299,25 +268,6 @@ def unarc(name):
     raise RuntimeError('Unrecognized archive: "%s"', name)
 
 
-@fill_in_args
-def fix_python_shebang(filename, prefix):
-  PYTHON = fill_in('{python}')
-  SITEDIR = path.join(prefix, '{sitedir}')
-  for line in fileinput.input(files=[filename], inplace=True):
-    line = line.rstrip()
-    if line.startswith('#!'):
-      print('#!/usr/bin/env PYTHONPATH=%s %s' % (SITEDIR, PYTHON))
-    else:
-      print(line.rstrip())
-
-
-@fill_in_args
-def add_site_dir(dirname, py_ver):
-  dirname = path.join(dirname, 'lib', py_ver, 'site-packages')
-  info('adding "%s" to python site dirs', topdir(dirname))
-  site.addsitedir(dirname)
-
-
 @contextlib.contextmanager
 def cwd(name):
   old = os.getcwd()
@@ -372,38 +322,6 @@ def recipe(name, nargs=0):
         info('already done "%s"', target)
     return wrapper
   return real_decorator
-
-
-def extend_pythonpath(prefix):
-  SITEDIR = path.join(prefix, '{sitedir}')
-  try:
-    return ':'.join([os.environ['PYTHONPATH'], SITEDIR])
-  except KeyError:
-    return SITEDIR
-
-
-@recipe('pyinstall', 1)
-def pyinstall(name, **kwargs):
-  prefix = kwargs.get('prefix', '{prefix}')
-  mkdir(path.join(prefix, '{sitedir}'))
-  with env(PYTHONPATH=extend_pythonpath(prefix)):
-    execute('{python}', '-m', 'easy_install', '--prefix=' + prefix, name)
-
-@recipe('pyfixbin', 1)
-def pyfixbin(name, names, **kwargs):
-  prefix = kwargs.get('prefix', '{prefix}')
-  for name in names:
-    fix_python_shebang(path.join(prefix, 'bin', name), prefix)
-
-
-@recipe('pysetup', 1)
-def pysetup(name, **kwargs):
-  prefix = kwargs.get('prefix', '{prefix}')
-  mkdir(path.join(prefix, '{sitedir}'))
-  with env(PYTHONPATH=extend_pythonpath(prefix)):
-    with cwd(path.join('{build}', name)):
-      execute('{python}', 'setup.py', 'build')
-      execute('{python}', 'setup.py', 'install', '--prefix=' + prefix)
 
 
 @recipe('fetch', 1)
@@ -530,8 +448,7 @@ def require_header(headers, lang='c', errmsg='', symbol=None, value=None):
   panic(errmsg)
 
 
-__all__ = ['setvar', 'panic', 'cmpver', 'find_executable', 'chmod', 'execute',
-           'rmtree', 'mkdir', 'copy', 'copytree', 'unarc', 'fetch', 'cwd',
-           'symlink', 'remove', 'move', 'find', 'textfile', 'env', 'path',
-           'add_site_dir', 'pysetup', 'pyinstall', 'recipe', 'unpack', 'patch',
-           'configure', 'make', 'require_header', 'touch', 'pyfixbin']
+__all__ = ['setvar', 'panic', 'find_executable', 'chmod', 'execute', 'rmtree',
+           'mkdir', 'copy', 'copytree', 'fetch', 'cwd', 'symlink', 'remove',
+           'move', 'find', 'textfile', 'env', 'path', 'recipe', 'unpack',
+           'patch', 'configure', 'make', 'require_header', 'touch']

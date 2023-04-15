@@ -177,9 +177,6 @@ def build():
   CXX = find_executable(CXX)
   FLAGS = '-s -O2 -pipe'
 
-  if platform.system() == 'Darwin':
-    FLAGS += ' -Wno-unused-command-line-argument'
-
   if getLogger().isEnabledFor(logging.DEBUG):
     FLAGS += ' -Wall'
   else:

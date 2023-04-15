@@ -1,0 +1,22 @@
+Index: demoscene-toolchain/submodules/binutils-gdb/bfd/amigaos.c
+===================================================================
+--- demoscene-toolchain.orig/submodules/binutils-gdb/bfd/amigaos.c
++++ demoscene-toolchain/submodules/binutils-gdb/bfd/amigaos.c
+@@ -2825,9 +2825,15 @@ amiga_new_section_hook (
+ {
+   newsect->used_by_bfd = (PTR) bfd_zalloc (abfd, sizeof(amiga_per_section_type));
+   newsect->alignment_power = 2;
+-  if (!strcmp (newsect->name, ".datachip") || !strcmp (newsect->name, ".bsschip"))
++  if (!strcmp (newsect->name, ".datachip") ||
++      !strcmp (newsect->name, ".bsschip") ||
++      !strncmp (newsect->name, ".datachip.", strlen(".datachip.")) ||
++      !strncmp (newsect->name, ".bsschip.", strlen(".bsschip.")))
+     amiga_per_section(newsect)->attribute |= MEMF_CHIP;
+-  if (!strcmp (newsect->name, ".datafast") || !strcmp (newsect->name, ".bssfast"))
++  if (!strcmp (newsect->name, ".datafast") ||
++      !strcmp (newsect->name, ".bssfast") ||
++      !strncmp (newsect->name, ".datafast.", strlen(".datafast.")) ||
++      !strncmp (newsect->name, ".bssfast.", strlen(".bssfast.")))
+     amiga_per_section(newsect)->attribute |= MEMF_FAST;
+   return TRUE;
+ }

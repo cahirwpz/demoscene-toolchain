@@ -23,7 +23,7 @@ URLS = \
    'https://ftp.gnu.org/gnu/texinfo/texinfo-4.12.tar.gz',
    'https://ftp.gnu.org/gnu/automake/automake-1.15.tar.gz',
    ('https://github.com/askeksa/Shrinkler/archive/refs/tags/v4.7.tar.gz',
-    'shrinkler-4.7.tar.gz'),
+    'Shrinkler-4.7.tar.gz'),
    ('ftp://ftp.uk.freesbie.org/sites/distfiles.gentoo.org/distfiles/' +
     'flex-2.5.4a.tar.gz', 'flex-2.5.4.tar.gz'),
    ('http://hp.alinea-computer.de/AmigaOS/NDK39.lha', 'NDK_3.9.lha'),
@@ -417,7 +417,7 @@ if __name__ == "__main__":
          binutils='binutils-gdb',
          fsuae='fs-uae',
          gcc='gcc-2.95.3',
-         shrinkler='shrinkler-4.7',
+         shrinkler='Shrinkler-4.7',
          target='m68k-amigaos',
          python=sys.executable,
          sitedir=path.join('lib', '{py_ver}', 'site-packages'),

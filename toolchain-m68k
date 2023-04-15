@@ -27,7 +27,7 @@ URLS = \
    ('ftp://ftp.uk.freesbie.org/sites/distfiles.gentoo.org/distfiles/' +
     'flex-2.5.4a.tar.gz', 'flex-2.5.4.tar.gz'),
    ('http://hp.alinea-computer.de/AmigaOS/NDK39.lha', 'NDK_3.9.lha'),
-   ('http://server.owl.de/~frank/tags/vasm1_8h.tar.gz', 'vasm.tar.gz')]
+   ('http://phoenix.owl.de/tags/vasm1_9c.tar.gz', 'vasm.tar.gz')]
 
 
 from common import * # NOQA

@@ -1,0 +1,10 @@
+--- m4-1.4.17/lib/c-stack.c.orig	2022-08-21 20:02:52.578841200 +0200
++++ m4-1.4.17/lib/c-stack.c	2022-08-21 20:06:38.481642915 +0200
+@@ -50,6 +50,7 @@
+ #if ! HAVE_STACK_T && ! defined stack_t
+ typedef struct sigaltstack stack_t;
+ #endif
++#undef SIGSTKSZ
+ #ifndef SIGSTKSZ
+ # define SIGSTKSZ 16384
+ #elif HAVE_LIBSIGSEGV && SIGSTKSZ < 16384

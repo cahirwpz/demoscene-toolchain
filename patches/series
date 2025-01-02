@@ -1,6 +1,7 @@
 ld-extra-chip-sections.patch
 gcc-2.95.3-amigahunk-fix.patch
 gcc-2.95.3-bss-section.patch
+gdb-line-addr-fix.patch
 fs-uae/break-on-illegal.diff
 fs-uae/break-on-sigint.diff
 fs-uae/break-at-start.diff
@@ -12,4 +13,4 @@ fs-uae/uaelib-log.diff
 fs-uae/data-path-macos.diff
 fs-uae/silence-logs.diff
 fs-uae/debug-msg-fix.diff
-gdb-line-addr-fix.patch
+fs-uae/uaelib-warpmode.diff

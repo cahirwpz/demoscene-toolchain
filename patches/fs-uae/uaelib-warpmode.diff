@@ -1,0 +1,32 @@
+Index: demoscene-toolchain/submodules/fs-uae/src/uaelib.cpp
+===================================================================
+--- demoscene-toolchain.orig/submodules/fs-uae/src/uaelib.cpp
++++ demoscene-toolchain/submodules/fs-uae/src/uaelib.cpp
+@@ -27,6 +27,7 @@
+ #include "gensound.h"
+ #include "picasso96.h"
+ #include "filesys.h"
++#include "inputdevice.h"
+ 
+ /*
+ * Returns UAE Version
+@@ -329,6 +330,11 @@ static uae_u32 emulib_Minimize (void)
+ 	return 0; // OSDEP_minimize_uae();
+ }
+ 
++static uae_u32 emulib_WarpMode(uae_u32 mode) {
++  warpmode(mode ? 1 : 0);
++  return 1;
++}
++
+ static int native_dos_op(TrapContext *ctx, uae_u32 mode, uae_u32 p1, uae_u32 p2, uae_u32 p3)
+ {
+ 	TCHAR tmp[MAX_DPATH];
+@@ -373,6 +379,7 @@ static uae_u32 uaelib_demux_common(TrapC
+ 		case 15: return emulib_Debug();
+ 
+  		case 40: return emulib_Log(ARG1);
++ 		case 41: return emulib_WarpMode(ARG1);
+ 
+ 		case 68: return emulib_Minimize();
+ 		case 69: return emulib_ExecuteNativeCode();

@@ -14,4 +14,6 @@ RUN apt-get install -y --no-install-recommends \
             libsdl2-dev libsdl2-ttf-dev libopenal-dev libtool make patch \
             pkg-config python3 python3-dev python3-pip quilt texinfo zip
 COPY requirements.txt .
-RUN pip3 install --break-system-packages -r requirements.txt
+RUN python3 -m venv .venv
+RUN source .venv/bin/activate && \
+    pip install --no-cache-dir -r requirements.txt

@@ -1,13 +1,10 @@
 #!/usr/bin/env python3 -B
 
-from __future__ import print_function
-
 from fnmatch import fnmatch
 from glob import glob
 from logging import debug, info, error
 from os import path
 import contextlib
-from distutils import spawn
 import os
 from multiprocessing import cpu_count
 import shutil
@@ -27,7 +24,7 @@ def setvar(**kwargs):
 
 
 def fill_in(value):
-  if type(value) == str:
+  if type(value) is str:
     return value.format(**VARS)
   return value
 
@@ -45,9 +42,9 @@ def flatten(*args):
 
   while queue:
     item = queue.pop(0)
-    if type(item) == list:
+    if type(item) is list:
       queue = item + queue
-    elif type(item) == tuple:
+    elif type(item) is tuple:
       queue = list(item) + queue
     else:
       yield item
@@ -74,7 +71,7 @@ def topdir(name):
 
 @fill_in_args
 def find_executable(name):
-  return (spawn.find_executable(name) or
+  return (shutil.which(name) or
           panic('Executable "%s" not found!', name))
 
 
@@ -101,7 +98,7 @@ def find(root, **kwargs):
 def touch(name):
   try:
     os.utime(name, None)
-  except:
+  except OSError:
     open(name, 'a').close()
 
 
@@ -353,6 +350,7 @@ def unpack(name, work_dir='{sources}', top_dir=None, dst_dir=None):
     src = (glob(path.join('{archives}', name) + '*') +
            glob(path.join('{submodules}', name) + '*'))[0]
   except IndexError:
+    src = ""
     panic('Missing files for "%s".', name)
 
   dst = path.join(work_dir, dst_dir or name)
@@ -439,7 +437,7 @@ def require_header(headers, lang='c', errmsg='', symbol=None, value=None):
         proc_stdin.append("#error")
         proc_stdin.append("#endif")
 
-    proc_stdout, proc_stderr = proc.communicate('\n'.join(proc_stdin).encode())
+    _, _ = proc.communicate('\n'.join(proc_stdin).encode())
     proc.wait()
 
     if proc.returncode == 0:

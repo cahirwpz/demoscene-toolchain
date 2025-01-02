@@ -9,6 +9,7 @@
 .ropeproject
 .build-*/
 .pc/
+.venv/
 m68k-amigaos/
 tmp/
 commodore

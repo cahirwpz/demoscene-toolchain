@@ -30,3 +30,15 @@ Index: demoscene-toolchain/submodules/fs-uae/src/uaelib.cpp
  
  		case 68: return emulib_Minimize();
  		case 69: return emulib_ExecuteNativeCode();
+Index: demoscene-toolchain/submodules/fs-uae/fsemu/src/fsemu-frame.c
+===================================================================
+--- demoscene-toolchain.orig/submodules/fs-uae/fsemu/src/fsemu-frame.c
++++ demoscene-toolchain/submodules/fs-uae/fsemu/src/fsemu-frame.c
+@@ -1014,7 +1014,6 @@ static void fsemu_frame_start_handle_com
+     fsemu_action_t action;
+     fsemu_action_state_t state;
+     while (fsemu_input_next_command(&action, &state)) {
+-        printf(" ----- fsemu frame command %04x %04x\n", action, state);
+         fsemu_frame_start_handle_command(action, state);
+     }
+ }

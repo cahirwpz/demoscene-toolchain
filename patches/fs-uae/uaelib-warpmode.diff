@@ -6,7 +6,7 @@ Index: demoscene-toolchain/submodules/fs-uae/src/uaelib.cpp
  #include "gensound.h"
  #include "picasso96.h"
  #include "filesys.h"
-+#include "inputdevice.h"
++#include "fsemu-control.h"
  
  /*
  * Returns UAE Version
@@ -15,7 +15,7 @@ Index: demoscene-toolchain/submodules/fs-uae/src/uaelib.cpp
  }
  
 +static uae_u32 emulib_WarpMode(uae_u32 mode) {
-+  warpmode(mode ? 1 : 0);
++  fsemu_control_set_warp(mode ? 1 : 0);
 +  return 1;
 +}
 +

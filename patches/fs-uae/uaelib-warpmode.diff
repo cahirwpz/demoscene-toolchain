@@ -1,0 +1,44 @@
+Index: demoscene-toolchain/submodules/fs-uae/src/uaelib.cpp
+===================================================================
+--- demoscene-toolchain.orig/submodules/fs-uae/src/uaelib.cpp
++++ demoscene-toolchain/submodules/fs-uae/src/uaelib.cpp
+@@ -27,6 +27,7 @@
+ #include "gensound.h"
+ #include "picasso96.h"
+ #include "filesys.h"
++#include "fsemu-control.h"
+ 
+ /*
+ * Returns UAE Version
+@@ -329,6 +330,11 @@ static uae_u32 emulib_Minimize (void)
+ 	return 0; // OSDEP_minimize_uae();
+ }
+ 
++static uae_u32 emulib_WarpMode(uae_u32 mode) {
++  fsemu_control_set_warp(mode ? 1 : 0);
++  return 1;
++}
++
+ static int native_dos_op(TrapContext *ctx, uae_u32 mode, uae_u32 p1, uae_u32 p2, uae_u32 p3)
+ {
+ 	TCHAR tmp[MAX_DPATH];
+@@ -373,6 +379,7 @@ static uae_u32 uaelib_demux_common(TrapC
+ 		case 15: return emulib_Debug();
+ 
+  		case 40: return emulib_Log(ARG1);
++ 		case 41: return emulib_WarpMode(ARG1);
+ 
+ 		case 68: return emulib_Minimize();
+ 		case 69: return emulib_ExecuteNativeCode();
+Index: demoscene-toolchain/submodules/fs-uae/fsemu/src/fsemu-frame.c
+===================================================================
+--- demoscene-toolchain.orig/submodules/fs-uae/fsemu/src/fsemu-frame.c
++++ demoscene-toolchain/submodules/fs-uae/fsemu/src/fsemu-frame.c
+@@ -1014,7 +1014,6 @@ static void fsemu_frame_start_handle_com
+     fsemu_action_t action;
+     fsemu_action_state_t state;
+     while (fsemu_input_next_command(&action, &state)) {
+-        printf(" ----- fsemu frame command %04x %04x\n", action, state);
+         fsemu_frame_start_handle_command(action, state);
+     }
+ }

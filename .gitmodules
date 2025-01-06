@@ -16,3 +16,6 @@
 [submodule "submodules/fs-uae"]
 	path = submodules/fs-uae
 	url = https://github.com/FrodeSolheim/fs-uae.git
+[submodule "gcc-bebbo"]
+	path = submodules/gcc-bebbo
+	url = https://github.com/bebbo/gcc.git

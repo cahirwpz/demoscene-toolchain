@@ -20,7 +20,10 @@ URLS = \
    'https://ftp.gnu.org/gnu/bison/bison-1.35.tar.gz',
    'https://ftp.gnu.org/gnu/texinfo/texinfo-4.12.tar.gz',
    'https://ftp.gnu.org/gnu/automake/automake-1.15.tar.gz',
-   'https://ftp.gnu.org/gnu/gmp/gmp-6.1.2.tar.bz2',
+   'https://gcc.gnu.org/pub/gcc/infrastructure/gmp-6.2.1.tar.bz2',
+   'https://gcc.gnu.org/pub/gcc/infrastructure/mpfr-3.1.6.tar.bz2',
+   'https://gcc.gnu.org/pub/gcc/infrastructure/mpc-1.0.3.tar.gz',
+   'https://gcc.gnu.org/pub/gcc/infrastructure/isl-0.18.tar.bz2',
    ('https://github.com/askeksa/Shrinkler/archive/refs/tags/v4.7.tar.gz',
     'Shrinkler-4.7.tar.gz'),
    ('https://github.com/emmanuel-marty/salvador/archive/refs/tags/1.4.2.tar.gz',
@@ -279,6 +282,34 @@ def build():
   make('{gmp}', parallel=True)
   make('{gmp}', 'install')
 
+  unpack('{mpfr}')
+  configure('{mpfr}',
+            '--prefix={host}',
+            '--with-gmp={host}',
+            '--disable-shared',
+            '--enable-static')
+  make('{mpfr}', parallel=True)
+  make('{mpfr}', 'install')
+
+  unpack('{mpc}')
+  configure('{mpc}',
+            '--prefix={host}',
+            '--with-gmp={host}',
+            '--with-mpfr={host}',
+            '--disable-shared',
+            '--enable-static')
+  make('{mpc}', parallel=True)
+  make('{mpc}', 'install')
+
+  unpack('{isl}')
+  configure('{isl}',
+            '--prefix={host}',
+            '--with-gmp-prefix={host}',
+            '--disable-shared',
+            '--enable-static')
+  make('{isl}', parallel=True)
+  make('{isl}', 'install')
+
   prepare_target()
 
   unpack('vasm', work_dir='{build}')
@@ -349,6 +380,26 @@ def build():
     # parallel build fails for all-gcc
     make('{gcc}', 'all-gcc', MAKEINFO='makeinfo')
     make('{gcc}', 'install-gcc', MAKEINFO='makeinfo')
+
+  with env(CC=CC, CXX=CXX, CFLAGS=FLAGS, CXXFLAGS=FLAGS):
+    configure('{gcc_bebbo}',
+              '--prefix={prefix}',
+              '--infodir={prefix}/{target}/info',
+              '--mandir={prefix}/share/man',
+              '--program-prefix=m68k-amigaos-',
+              '--program-suffix=-6.5.0b',
+              '--with-gmp={host}',
+              '--with-mpfr={host}',
+              '--with-mpc={host}',
+              '--with-isl={host}',
+              '--target=m68k-amigaos',
+              '--enable-languages=c',
+              '--enable-version-specific-runtime-libs',
+              '--disable-nls',
+              '--disable-libssp',
+              from_dir='{submodules}/{gcc_bebbo}')
+    make('{gcc_bebbo}', 'all-gcc', parallel=True)
+    make('{gcc_bebbo}', 'install-gcc')
 
   with env(CC=CC, CXX=CXX, CFLAGS=FLAGS, CXXFLAGS=FLAGS, PATH=PATH):
     fs_uae_bootstrap()
@@ -432,11 +483,15 @@ if __name__ == "__main__":
          automake='automake-1.15',
          autoconf='autoconf-2.13',
          texinfo='texinfo-4.12',
-         gmp='gmp-6.1.2',
+         gmp='gmp-6.2.1',
+         mpfr='mpfr-3.1.6',
+         mpc='mpc-1.0.3',
+         isl='isl-0.18',
          NDK='NDK_3.9',
          binutils='binutils-gdb',
          fsuae='fs-uae',
          gcc='gcc-2.95.3',
+         gcc_bebbo='gcc-bebbo',
          shrinkler='Shrinkler-4.7',
          salvador='salvador-1.4.2',
          lzsa='lzsa-1.4.1',

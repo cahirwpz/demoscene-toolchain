@@ -20,6 +20,7 @@ URLS = \
    'https://ftp.gnu.org/gnu/bison/bison-1.35.tar.gz',
    'https://ftp.gnu.org/gnu/texinfo/texinfo-4.12.tar.gz',
    'https://ftp.gnu.org/gnu/automake/automake-1.15.tar.gz',
+   'https://ftp.gnu.org/gnu/gmp/gmp-6.1.2.tar.bz2',
    ('https://github.com/askeksa/Shrinkler/archive/refs/tags/v4.7.tar.gz',
     'Shrinkler-4.7.tar.gz'),
    ('https://github.com/emmanuel-marty/salvador/archive/refs/tags/1.4.2.tar.gz',
@@ -153,7 +154,7 @@ def touch_genfiles(dst):
 def download():
   with cwd('{archives}'):
     for url in URLS:
-      if type(url) == tuple:
+      if type(url) is tuple:
         url, name = url[0], url[1]
       else:
         name = path.basename(url)
@@ -270,6 +271,14 @@ def build():
   make('{autoconf}', parallel=True)
   make('{autoconf}', 'install')
 
+  unpack('{gmp}')
+  configure('{gmp}',
+            '--prefix={host}',
+            '--disable-shared',
+            '--enable-static')
+  make('{gmp}', parallel=True)
+  make('{gmp}', 'install')
+
   prepare_target()
 
   unpack('vasm', work_dir='{build}')
@@ -304,6 +313,7 @@ def build():
               '--disable-plugins',
               '--disable-werror',
               '--disable-tui',
+              '--with-libgmp-prefix={host}',
               '--with-python=' + sys.executable,
               '--target=m68k-amigaos',
               from_dir='{submodules}/{binutils}')
@@ -422,6 +432,7 @@ if __name__ == "__main__":
          automake='automake-1.15',
          autoconf='autoconf-2.13',
          texinfo='texinfo-4.12',
+         gmp='gmp-6.1.2',
          NDK='NDK_3.9',
          binutils='binutils-gdb',
          fsuae='fs-uae',

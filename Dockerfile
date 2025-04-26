@@ -12,8 +12,5 @@ RUN apt-get install -y --no-install-recommends \
             automake bison ca-certificates flex git-core gettext gperf \
             gcc g++ libc6-dev libglib2.0-dev libncurses-dev libpng-dev \
             libsdl2-dev libsdl2-ttf-dev libopenal-dev libtool make patch \
-            pkg-config python3 python3-dev python3-venv quilt texinfo zip
-COPY requirements.txt .
-RUN python3 -m venv .venv
-RUN . ./.venv/bin/activate && \
-    pip install --no-cache-dir -r requirements.txt
+            pkg-config python3 python3-dev python3-venv quilt texinfo zip \
+            debhelper fakeroot

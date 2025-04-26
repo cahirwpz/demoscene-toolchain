@@ -1,0 +1,5 @@
+demoscene-toolchain (2025.04.26+1) unstable; urgency=medium
+
+  * Build package for Debian 12 for the first time.
+
+ -- Krystian Bacławski <krystian.baclawski@gmail.com>  Sat, 26 Apr 2025 10:00:00 +0200

@@ -18,13 +18,14 @@ jobs:
         ./toolchain-m68k --quiet download
 
     - name: Build toolchain
-      run: ./toolchain-m68k --quiet build --prefix=/usr/local
+      run: ./toolchain-m68k --quiet build --prefix=/opt/amiga
 
-    - name: Archive toolchain
-      run: tar czf demoscene-toolchain.tar.gz /usr/local
+    - name: Build Debian package
+      run: env PREFIX=/opt/amiga ./build-deb 
 
     - name: Upload toolchain
       uses: actions/upload-artifact@v4
       with:
         name: demoscene-toolchain
-        path: demoscene-toolchain.tar.gz
+        path: demoscene-toolchain_*_amd64.deb
+

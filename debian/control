@@ -1,0 +1,22 @@
+Source: demoscene-toolchain
+Section: unknown
+Priority: optional
+Maintainer: Krystian Bacławski <krystian.baclawski@gmail.com>
+Build-Depends: debhelper (>= 9)
+Standards-Version: 3.9.8
+Homepage: https://github.com/cahirwpz/demoscene-toolchain
+
+Package: demoscene-toolchain
+Architecture: amd64
+Depends: ${shlibs:Depends} ${misc:Depends}
+Description: Toolchain for cahirwpz@ demoscene projects
+ This package contains various tools and programs that are required to build
+ project available at https://github.com/cahirwpz/demoscene.
+ .
+ The non-exhaustive list follows:
+  * gcc 2.95.3 (patched)
+  * gcc 6.5.0b (from Bebbo)
+  * binutils 2.39.0 (patched, from Bebbo)
+  * vasm (1.9c)
+  * fs-uae (patched)
+  * compressors (lzsa, salvador, Shrinkler)

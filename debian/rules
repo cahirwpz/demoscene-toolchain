@@ -1,0 +1,30 @@
+#!/usr/bin/make -f
+
+build:
+build-indep:
+build-arch:
+
+binary:
+	dh_testdir
+	dh_testroot
+	dh_installchangelogs
+	dh_installdocs
+	dh_install
+	dh_installman
+	dh_link
+	dh_strip -Xlibgcc.a -Xlibgcov.a
+	dh_compress
+	dh_fixperms
+	dh_installdeb
+	dh_shlibdeps
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb --destdir=.
+
+binary-indep:
+binary-arch:
+
+clean:
+	dh_clean
+
+.PHONY: build clean binary-indep binary-arch binary install configure

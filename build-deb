@@ -1,8 +1,10 @@
 #!/usr/bin/fakeroot /bin/bash
 
-mkdir -p /opt/amiga || exit 1
-./toolchain-m68k build --prefix=/opt/amiga
-mkdir -p debian/tmp/opt
-cp -a /opt/amiga debian/tmp/opt/
+PREFIX=${PREFIX:-/opt/amiga}
+
+mkdir -p ${PREFIX} || exit 1
+./toolchain-m68k build --prefix=${PREFIX}
+mkdir -p debian/tmp/${PREFIX}
+cp -a ${PREFIX}/* debian/tmp/${PREFIX}/
 make -f ./debian/rules binary
 make -f ./debian/rules clean

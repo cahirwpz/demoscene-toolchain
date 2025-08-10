@@ -12,10 +12,10 @@
 	url = https://github.com/adtools/fd2pragma.git
 [submodule "submodules/binutils-gdb"]
 	path = submodules/binutils-gdb
-	url = https://github.com/bebbo/binutils-gdb.git
+	url = https://github.com/AmigaPorts/binutils-gdb.git
 [submodule "submodules/fs-uae"]
 	path = submodules/fs-uae
 	url = https://github.com/FrodeSolheim/fs-uae.git
 [submodule "gcc-bebbo"]
 	path = submodules/gcc-bebbo
-	url = https://github.com/bebbo/gcc.git
+	url = https://github.com/AmigaPorts/gcc.git

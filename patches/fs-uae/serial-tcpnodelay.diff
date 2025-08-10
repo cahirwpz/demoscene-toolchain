@@ -1,0 +1,21 @@
+Index: demoscene-toolchain/submodules/fs-uae/src/od-fs/parser.cpp
+===================================================================
+--- demoscene-toolchain.orig/submodules/fs-uae/src/od-fs/parser.cpp
++++ demoscene-toolchain/submodules/fs-uae/src/od-fs/parser.cpp
+@@ -53,6 +53,7 @@
+ #include "drawing.h"
+ #include "vpar.h"
+ #include "midi.h"
++#include "slirp/src/util.h"
+ 
+ #ifdef POSIX_SERIAL
+ #include <termios.h>
+@@ -382,6 +383,8 @@ static bool tcp_is_connected (void)
+ 		if (uae_socket_select_read(serialsocket)) {
+ 			serialconn = uae_socket_accept(serialsocket);
+ 			if (serialconn != UAE_SOCKET_INVALID) {
++				/* Disable Nagle's algorithm */
++				slirp_socket_set_nodelay(serialconn);
+ 				write_log(_T("TCP: Serial connection accepted\n"));
+ 			}
+ 		}

@@ -1,0 +1,16 @@
+Index: demoscene-toolchain/submodules/fs-uae/src/od-win32/serial_win32.cpp
+===================================================================
+--- demoscene-toolchain.orig/submodules/fs-uae/src/od-win32/serial_win32.cpp
++++ demoscene-toolchain/submodules/fs-uae/src/od-win32/serial_win32.cpp
+@@ -336,6 +336,11 @@ static void checkreceive_serial (void)
+ 	if (!canreceive())
+ 		return;
+ 
++	  if (data_in_serdatr) {
++		serial_check_irq ();
++		return;
++	  }
++
+ 	if (ninebit) {
+ 		if (!readseravail())
+ 			return;

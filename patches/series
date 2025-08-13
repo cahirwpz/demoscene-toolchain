@@ -15,3 +15,4 @@ fs-uae/silence-logs.diff
 fs-uae/debug-msg-fix.diff
 fs-uae/uaelib-warpmode.diff
 fs-uae/serial-tcpnodelay.diff
+fs-uae/serial-reliable-rx.diff

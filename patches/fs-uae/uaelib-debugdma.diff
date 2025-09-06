@@ -1,0 +1,38 @@
+Index: demoscene-toolchain/submodules/fs-uae/src/uaelib.cpp
+===================================================================
+--- demoscene-toolchain.orig/submodules/fs-uae/src/uaelib.cpp
++++ demoscene-toolchain/submodules/fs-uae/src/uaelib.cpp
+@@ -28,6 +28,7 @@
+ #include "picasso96.h"
+ #include "filesys.h"
+ #include "fsemu-control.h"
++#include "drawing.h"
+ 
+ /*
+ * Returns UAE Version
+@@ -335,6 +336,17 @@
+   return 1;
+ }
+ 
++static uae_u32 emulib_DebugDMA(uae_u32 mode) {
++  if (mode > 6)
++    return 0;
++  if (debug_dma) {
++    record_dma_reset();
++    reset_drawing();
++  }
++  debug_dma = mode;
++  return 1;
++}
++
+ static int native_dos_op(TrapContext *ctx, uae_u32 mode, uae_u32 p1, uae_u32 p2, uae_u32 p3)
+ {
+ 	TCHAR tmp[MAX_DPATH];
+@@ -380,6 +392,7 @@
+ 
+  		case 40: return emulib_Log(ARG1);
+  		case 41: return emulib_WarpMode(ARG1);
++ 		case 42: return emulib_DebugDMA(ARG1);
+ 
+ 		case 68: return emulib_Minimize();
+ 		case 69: return emulib_ExecuteNativeCode();

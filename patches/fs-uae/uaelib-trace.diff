@@ -83,8 +83,8 @@ Index: demoscene-toolchain/submodules/fs-uae/src/od-fs/parser.cpp
  
 +void sendprinter (const char *buf, size_t len)
 +{
-+	if (parallel_mode == PARALLEL_MODE_TCP_PRINTER) {
-+		if (parallel_tcp_connected()) {
++  if (parallel_mode == PARALLEL_MODE_TCP_PRINTER) {
++    if (parallel_tcp_connected()) {
 +      for (size_t sent = 0; sent < len; ) {
 +        ssize_t n = uae_socket_write(parallel_tcp, buf + sent, len - sent);
 +        if (n <= 0) {

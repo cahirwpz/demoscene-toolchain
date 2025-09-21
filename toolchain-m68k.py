@@ -231,7 +231,7 @@ def build():
                  lang='c', errmsg='libncurses-dev package missing')
 
   download()
-  execute('quilt', 'push', '-a', ignore_errors=True)
+  execute('quilt', 'push', '-a')
 
   unpack('{automake}')
 

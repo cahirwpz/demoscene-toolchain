@@ -6,18 +6,17 @@ Index: demoscene-toolchain/submodules/fs-uae/src/blitter.cpp
  		write_log (_T("cycles %d, missed %d, total %d\n"),
  			blit_totalcyclecounter, blit_misscyclecounter, blit_totalcyclecounter + blit_misscyclecounter);
  	blitter_dangerous_bpl = 0;
-+  log_trace_event((trace_event){.type = 'E', .pid = 0, .tid = 6}, "Ucycles",
-+                  blit_totalcyclecounter + blit_misscyclecounter, NULL);
++	log_trace_event((trace_event){.type = 'E', .pid = 0, .tid = 6},
++		"Ucycles", blit_totalcyclecounter + blit_misscyclecounter, NULL);
  }
  
  STATIC_INLINE void chipmem_agnus_wput2 (uaecptr addr, uae_u32 w)
-@@ -1633,6 +1635,10 @@ static void do_blitter2(int hpos, int co
+@@ -1633,6 +1635,9 @@ static void do_blitter2(int hpos, int co
  	bltstate = BLT_init;
  	blit_slowdown = 0;
  
-+  log_trace_event((trace_event){.type = 'B', .pid = 0, .tid = 6, .name = "blit"},
-+                  "Ppc", M68K_GETPC, "Ihsize", blt_info.hblitsize,
-+                  "Ivsize", blt_info.vblitsize, NULL);
++	log_trace_event((trace_event){.type = 'B', .pid = 0, .tid = 6, .name = "blit"},
++		"Ppc", M68K_GETPC, "Ihsize", blt_info.hblitsize, "Ivsize", blt_info.vblitsize, NULL);
 +
  	unset_special (SPCFLAG_BLTNASTY);
  	if (dmaen (DMA_BLITPRI))
@@ -30,7 +29,7 @@ Index: demoscene-toolchain/submodules/fs-uae/src/disk.cpp
  			write_log (_T("%d%s"), floppy[dr].mfmpos, dr < MAX_FLOPPY_DRIVES - 1 ? _T(",") : _T(""));
  		write_log (_T("\n"));
  	}
-+  log_trace_event((trace_event){.type = 'E', .pid = 0, .tid = 1}, NULL);
++	log_trace_event((trace_event){.type = 'E', .pid = 0, .tid = 1}, NULL);
  }
  
  static void fetchnextrevolution (drive *drv)
@@ -38,9 +37,9 @@ Index: demoscene-toolchain/submodules/fs-uae/src/disk.cpp
  				floppy[dr].cyl * 2 + side, floppy[dr].mfmpos, dma_enable, M68K_GETPC);
  			disk_dma_debugmsg ();
  		}
-+    log_trace_event((trace_event){.type = 'B', .pid = 0, .tid = 1,
-+                    .name = (dskdmaen == DSKDMA_WRITE ? "write" : "read")},
-+                    "Idrive", dr, "Itrack", floppy[dr].cyl * 2 + side, NULL);
++		log_trace_event((trace_event){.type = 'B', .pid = 0, .tid = 1,
++		 	.name = (dskdmaen == DSKDMA_WRITE ? "write" : "read")},
++		 	"Idrive", dr, "Itrack", floppy[dr].cyl * 2 + side, NULL);
  	}
  
  	for (dr = 0; dr < MAX_FLOPPY_DRIVES; dr++)
@@ -54,10 +53,10 @@ Index: demoscene-toolchain/submodules/fs-uae/src/include/debug.h
  
 +/* Trace Event Format */
 +struct trace_event {
-+  char type, scope;
-+  int pid, tid;
-+  const char *name;
-+  bool amiga_addr;
++	char type, scope;
++	int pid, tid;
++	const char *name;
++	bool amiga_addr;
 +};
 +
 +extern void log_trace_event(struct trace_event ev, ...);
@@ -71,7 +70,7 @@ Index: demoscene-toolchain/submodules/fs-uae/src/include/parallel.h
  
  extern int isprinter (void);
  extern void doprinter (uae_u8);
-+extern int logprinter (const char *format, ...);
++extern void sendprinter (const char *buf, size_t len);
  extern void flushprinter (void);
  extern void closeprinter (void);
  extern int isprinteropen (void);
@@ -79,36 +78,24 @@ Index: demoscene-toolchain/submodules/fs-uae/src/od-fs/parser.cpp
 ===================================================================
 --- demoscene-toolchain.orig/submodules/fs-uae/src/od-fs/parser.cpp
 +++ demoscene-toolchain/submodules/fs-uae/src/od-fs/parser.cpp
-@@ -268,6 +268,34 @@ void doprinter (uae_u8 val)
+@@ -268,6 +268,22 @@ void doprinter (uae_u8 val)
  #endif
  }
  
-+int logprinter (const char *format, ...)
++void sendprinter (const char *buf, size_t len)
 +{
-+  ssize_t sent = 0;
 +	if (parallel_mode == PARALLEL_MODE_TCP_PRINTER) {
 +		if (parallel_tcp_connected()) {
-+      ssize_t len;
-+      char *buf;
-+      va_list ap;
-+      va_start(ap, format);
-+      len = vasprintf(&buf, format, ap);
-+      va_end(ap);
-+      if (len < 0)
-+        return -1;
-+      while (sent < len) {
++      for (size_t sent = 0; sent < len; ) {
 +        ssize_t n = uae_socket_write(parallel_tcp, buf + sent, len - sent);
 +        if (n <= 0) {
 +          parallel_tcp_disconnect ();
-+          sent = -1;
-+          break;
++          return;
 +        }
 +        sent += n;
 +      }
-+      free(buf);
 +    }
 +  }
-+  return sent;
 +}
 +
  struct uaeserialdata
@@ -126,23 +113,35 @@ Index: demoscene-toolchain/submodules/fs-uae/src/uaelib.cpp
  
  /*
  * Returns UAE Version
-@@ -347,6 +348,164 @@ static uae_u32 emulib_DebugDMA(uae_u32 m
+@@ -347,6 +348,177 @@ static uae_u32 emulib_DebugDMA(uae_u32 m
    return 1;
  }
  
++static void _vlog_printf(char *str, size_t size, size_t *lenp, const char *format, ...) {
++  va_list ap;
++  va_start(ap, format);
++  (*lenp) += vsnprintf(str + (*lenp), size - (*lenp), format, ap);
++  va_end(ap);
++}
++
 +static bool trace_event_enabled = false;
 +
 +#define GETARG() (get_long(m68k_areg(regs, 7) + (1 + (slot++)) * 4))
++#define vlog_printf(format, ...) _vlog_printf(buf, sizeof(buf), &len, format, ##__VA_ARGS__)
 +
 +static void vlog_trace_event(struct trace_event ev, va_list ap, int slot) {
 +  static unsigned long cycles_begin = 0;
 +  static bool first_call = true;
++  static char buf[256];
 +
 +  if (!trace_event_enabled)
 +    return;
 +
++  size_t len = 0;
++  buf[0] = '\0';
++
 +  if (first_call) {
-+    logprinter("[\n");
++    vlog_printf("[\n");
 +    cycles_begin = get_cycles();
 +    first_call = false;
 +  }
@@ -150,13 +149,13 @@ Index: demoscene-toolchain/submodules/fs-uae/src/uaelib.cpp
 +  unsigned long clock = (currprefs.ntscmode ? CHIPSET_CLOCK_NTSC : CHIPSET_CLOCK_PAL);
 +  double ts_us = (double)(get_cycles() - cycles_begin) * 1e6 / (double)(CYCLE_UNIT * clock);
 +
-+  logprinter("{\"ph\": \"%c\", \"pid\": %d, \"tid\": %d, \"ts\": %.3f", ev.type, ev.pid, ev.tid, ts_us);
++  vlog_printf("{\"ph\": \"%c\", \"pid\": %d, \"tid\": %d, \"ts\": %.3f", ev.type, ev.pid, ev.tid, ts_us);
 +
 +  if (ev.type == 'B' || ev.type == 'M' || ev.type == 'C' || ev.type == 'i') {
-+    logprinter(", \"name\": \"%s\"", ev.name);
++    vlog_printf(", \"name\": \"%s\"", ev.name);
 +  }
 +  if (ev.type == 'i') {
-+    logprinter(", \"s\": \"%c\"", ev.scope);
++    vlog_printf(", \"s\": \"%c\"", ev.scope);
 +  }
 +
 +  bool empty = true;
@@ -175,41 +174,42 @@ Index: demoscene-toolchain/submodules/fs-uae/src/uaelib.cpp
 +      break;
 +
 +    if (empty) {
-+      logprinter(", \"args\": {");
++      vlog_printf(", \"args\": {");
 +      empty = false;
 +    } else {
-+      logprinter(", ");
++      vlog_printf(", ");
 +    }
 +
 +    switch (*key++) {
 +      case 'S': { /* string */
 +        const char *s = slot ? (char *)get_real_address(GETARG()) : va_arg(ap, char *);
-+        logprinter("\"%s\": \"%s\"", key, s);
++        vlog_printf("\"%s\": \"%s\"", key, s);
 +        break;
 +      }
 +      case 'I': { /* signed int */
 +        int d = slot ? GETARG() : va_arg(ap, int);
-+        logprinter("\"%s\": %d", key, d);
++        vlog_printf("\"%s\": %d", key, d);
 +        break;
 +      }
 +      case 'U': { /* unsigned int */
 +        unsigned int d = slot ? GETARG() : va_arg(ap, unsigned int);
-+        logprinter("\"%s\": %u", key, d);
++        vlog_printf("\"%s\": %u", key, d);
 +        break;
 +      }
 +      case 'P': { /* amiga pointer */
 +        uae_u32 ptr = slot ? GETARG() : va_arg(ap, uae_u32);
-+        logprinter("\"%s\": \"%p\"", key, (void *)ptr);
++        vlog_printf("\"%s\": \"%p\"", key, (void *)ptr);
 +        break;
 +      }
 +    }
 +  }
 +
 +  if (!empty) {
-+    logprinter("}");
++    vlog_printf("}");
 +  }
 +
-+  logprinter("},\n");
++  vlog_printf("},\n");
++  sendprinter(buf, len);
 +}
 +
 +#undef GETARG
@@ -291,7 +291,7 @@ Index: demoscene-toolchain/submodules/fs-uae/src/uaelib.cpp
  static int native_dos_op(TrapContext *ctx, uae_u32 mode, uae_u32 p1, uae_u32 p2, uae_u32 p3)
  {
  	TCHAR tmp[MAX_DPATH];
-@@ -393,6 +552,7 @@ static uae_u32 uaelib_demux_common(TrapC
+@@ -393,6 +565,7 @@ static uae_u32 uaelib_demux_common(TrapC
   		case 40: return emulib_Log(ARG1);
   		case 41: return emulib_WarpMode(ARG1);
   		case 42: return emulib_DebugDMA(ARG1);

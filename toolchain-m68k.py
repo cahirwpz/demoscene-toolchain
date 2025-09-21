@@ -231,6 +231,7 @@ def build():
                  lang='c', errmsg='libncurses-dev package missing')
 
   download()
+  # Make sure the command does not output an error when you commit the patches
   execute('quilt', 'push', '-a', ignore_errors=True)
 
   unpack('{automake}')

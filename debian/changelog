@@ -1,3 +1,9 @@
+demoscene-toolchain (2026.06.02+1) unstable; urgency=medium
+
+  * Add MemProtect* uaelib calls.
+
+ -- Krystian Bacławski <krystian.baclawski@gmail.com>  Tue, 02 Jun 2026 09:12:32 +0200
+
 demoscene-toolchain (2025.09.21+1) unstable; urgency=medium
 
   * Add TraceEvent* uaelib calls.

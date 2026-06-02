@@ -12,7 +12,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
-from urllib.request import urlopen
+import requests
 import zipfile
 
 VARS = {}
@@ -204,11 +204,12 @@ def textfile(*lines):
 def download(url, name):
   info('download "%s" to "%s"', url, topdir(name))
 
-  u = urlopen(url)
-  meta = u.info()
+  res = requests.get(url, stream=True)
+  res.raise_for_status()
+
   try:
-    size = int(meta['Content-Length'])
-  except (IndexError, TypeError):
+    size = int(res.headers.get('content-length', ''))
+  except (ValueError, TypeError):
     size = None
 
   if size:
@@ -218,13 +219,11 @@ def download(url, name):
 
   with open(name, 'wb') as f:
     done = 0
-    block = 8192
-    while True:
-      buf = u.read(block)
-      if not buf:
-        break
-      done += len(buf)
-      f.write(buf)
+    for chunk in res.iter_content(chunk_size=8192):
+      if not chunk:
+        continue
+      done += len(chunk)
+      f.write(chunk)
       if size:
         status = r"%d [%3.2f%%]" % (done, done * 100. / size)
       else:

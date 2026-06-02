@@ -1,0 +1,168 @@
+Index: demoscene-toolchain/submodules/fs-uae/src/debug.cpp
+===================================================================
+--- demoscene-toolchain.orig/submodules/fs-uae/src/debug.cpp
++++ demoscene-toolchain/submodules/fs-uae/src/debug.cpp
+@@ -2603,6 +2603,11 @@ struct memwatch_node mwnodes[MEMWATCH_TO
+ static int mwnodes_start, mwnodes_end;
+ static struct memwatch_node mwhit;
+ 
++/* Memory protection (deny-by-default allow-list); see memprotect_* below. */
++static uae_u32 **prot_tables;
++static int memprotect_active;
++#define PROT_BANK_LONGS (65536 / 4)
++
+ #define MUNGWALL_SLOTS 16
+ struct mungwall_data
+ {
+@@ -3077,6 +3082,32 @@ static int memwatch_func (uaecptr addr,
+ 
+ 	addr = munge24 (addr);
+ 
++	if (memprotect_active) {
++		uae_u32 *t = prot_tables[addr >> 16];   /* addr is munge24'd; index in range */
++		if (t) {
++			bool denied = false;
++			for (uaecptr a = addr; a < addr + size; a = (a & ~3) + 4) {
++				if ((accessmask & t[(a & 0xffff) >> 2]) == 0) {
++					denied = true;
++					break;
++				}
++			}
++			if (denied) {
++				mwhit.addr = addr;
++				mwhit.rwi = rwi;
++				mwhit.size = size;
++				mwhit.access_mask = accessmask;
++				mwhit.reg = reg;
++				mwhit.val = (rwi & 2) ? val : 0;
++				debugging = 1;
++				debug_pc = M68K_GETPC;
++				debug_cycles ();
++				set_special (SPCFLAG_BRK);
++				return 1;
++			}
++		}
++	}
++
+ 	if (smc_table && (rwi >= 2))
+ 		smc_detector (addr, rwi, size, valp);
+ 
+@@ -3854,6 +3885,63 @@ static void memwatch (TCHAR **c)
+ 	memwatch_dump (num);
+ }
+ 
++/*
++ * Memory protection: deny-by-default allow-list over all RAM.
++ *
++ * prot_tables[bank][(addr & 0xffff) >> 2] holds, per longword of guest RAM, the
++ * OR of MW_MASK_* component bits permitted to access that longword. A NULL bank
++ * table means "not protected" (non-RAM, or not yet allocated). Once activated,
++ * any access to a protected longword whose component bit is not set breaks into
++ * the debugger; with nothing granted, every access to RAM breaks.
++ * (prot_tables / memprotect_active / PROT_BANK_LONGS are declared above, before
++ * memwatch_func, which reads the table on the access hot path.)
++ */
++static void memprotect_ensure_tables (void)
++{
++	if (!memwatch_enabled) {
++		initialize_memwatch (0);
++		memwatch_access_validator = 0;
++	}
++	if (!prot_tables)
++		prot_tables = xcalloc (uae_u32 *, membank_total);
++	for (int b = 0; b < membank_total; b++) {
++		if (prot_tables[b])
++			continue;
++		addrbank *ab = &get_mem_bank ((uaecptr)b << 16);
++		if (ab->flags & ABFLAG_RAM)
++			prot_tables[b] = xcalloc (uae_u32, PROT_BANK_LONGS);
++	}
++}
++
++void memprotect_set (uaecptr addr, uae_u32 size, uae_u32 access)
++{
++	if (size == 0)
++		return;
++	memprotect_ensure_tables ();
++	for (uaecptr a = addr & ~3; a < addr + size; a += 4) {
++		uae_u32 *t = prot_tables[(a >> 16) & (membank_total - 1)];
++		if (!t)
++			continue;
++		uae_u32 *slot = &t[(a & 0xffff) >> 2];
++		if (access)
++			*slot |= access;
++		else
++			*slot = 0;
++	}
++}
++
++int memprotect_activate (void)
++{
++	memprotect_ensure_tables ();
++	for (int b = 0; b < membank_total; b++) {
++		addrbank *ab = &get_mem_bank ((uaecptr)b << 16);
++		if (ab->flags & ABFLAG_RAM)
++			memwatch_remap ((uaecptr)b << 16);
++	}
++	memprotect_active = 1;
++	return 0;
++}
++
+ static void copymem(TCHAR **c)
+ {
+ 	uae_u32 addr = 0, eaddr = 0, dst = 0;
+Index: demoscene-toolchain/submodules/fs-uae/src/include/debug.h
+===================================================================
+--- demoscene-toolchain.orig/submodules/fs-uae/src/include/debug.h
++++ demoscene-toolchain/submodules/fs-uae/src/include/debug.h
+@@ -165,6 +165,8 @@ struct memwatch_node {
+ extern struct memwatch_node mwnodes[MEMWATCH_TOTAL];
+ 
+ extern void memwatch_dump2 (TCHAR *buf, int bufsize, int num);
++extern void memprotect_set (uaecptr addr, uae_u32 size, uae_u32 access);
++extern int memprotect_activate (void);
+ 
+ uae_u16 debug_wgetpeekdma_chipram (uaecptr addr, uae_u32 v, uae_u32 mask, int reg, int ptrreg);
+ uae_u16 debug_wputpeekdma_chipram (uaecptr addr, uae_u32 v, uae_u32 mask, int reg, int ptrreg);
+Index: demoscene-toolchain/submodules/fs-uae/src/uaelib.cpp
+===================================================================
+--- demoscene-toolchain.orig/submodules/fs-uae/src/uaelib.cpp
++++ demoscene-toolchain/submodules/fs-uae/src/uaelib.cpp
+@@ -540,6 +540,26 @@ static int native_dos_op(TrapContext *ct
+ 
+ #include "uaelib_log.cpp"
+ 
++#ifdef DEBUGGER
++/*
++ * Memory protection (deny-by-default allow-list over all RAM).
++ * emulib_MemProtect grants (access != 0, OR of MW_MASK_* component bits) or
++ * drops (access == 0) permission for components to touch [addr, addr+size).
++ * emulib_MemProtectActivate turns enforcement on, one-way: afterwards any access
++ * to RAM whose component is not permitted for that longword breaks the debugger.
++ */
++static uae_u32 emulib_MemProtect(uae_u32 addr, uae_u32 size, uae_u32 access)
++{
++	memprotect_set(addr, size, access);
++	return 0;
++}
++
++static uae_u32 emulib_MemProtectActivate(void)
++{
++	return memprotect_activate();
++}
++#endif
++
+ static uae_u32 uaelib_demux_common(TrapContext *ctx, uae_u32 ARG0, uae_u32 ARG1, uae_u32 ARG2, uae_u32 ARG3, uae_u32 ARG4, uae_u32 ARG5)
+ {
+ 	switch (ARG0) {
+@@ -565,6 +585,10 @@ static uae_u32 uaelib_demux_common(TrapC
+  		case 41: return emulib_WarpMode(ARG1);
+  		case 42: return emulib_DebugDMA(ARG1);
+  		case 43 ... 47: return emulib_TraceEvent(ARG0, ARG1, ARG2, ARG3);
++#ifdef DEBUGGER
++		case 48: return emulib_MemProtect(ARG1, ARG2, ARG3);
++		case 49: return emulib_MemProtectActivate();
++#endif
+ 
+ 		case 68: return emulib_Minimize();
+ 		case 69: return emulib_ExecuteNativeCode();

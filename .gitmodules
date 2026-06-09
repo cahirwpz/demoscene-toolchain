@@ -19,3 +19,6 @@
 [submodule "gcc-bebbo"]
 	path = submodules/gcc-bebbo
 	url = https://github.com/AmigaPorts/gcc.git
+[submodule "submodules/amiberry"]
+	path = submodules/amiberry
+ 	url = https://github.com/BlitterStudio/amiberry.git

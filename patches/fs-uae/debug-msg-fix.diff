@@ -1,3 +1,8 @@
+Report the PC of a triggered breakpoint instead of its index.
+
+The breakpoint-hit message in debug() prints "Breakpoint at %x" (the PC)
+rather than "Breakpoint %d triggered" (the breakpoint number).
+
 Index: demoscene-toolchain/submodules/fs-uae/src/debug.cpp
 ===================================================================
 --- demoscene-toolchain.orig/submodules/fs-uae/src/debug.cpp

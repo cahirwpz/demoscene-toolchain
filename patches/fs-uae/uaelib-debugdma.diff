@@ -1,3 +1,8 @@
+Add uaelib trap 42 (DebugDMA) to toggle the visual DMA debugger.
+
+emulib_DebugDMA(mode) sets the debug_dma overlay mode (0..6) from guest
+code, resetting the DMA record and the drawing state when it changes.
+
 Index: demoscene-toolchain/submodules/fs-uae/src/uaelib.cpp
 ===================================================================
 --- demoscene-toolchain.orig/submodules/fs-uae/src/uaelib.cpp

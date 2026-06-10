@@ -1,3 +1,9 @@
+Re-enable the Ctrl-C (SIGINT) break-into-debugger handler.
+
+Upstream FS-UAE #if 0'd out the SIGINT handler. This restores it so
+pressing Ctrl-C calls activate_debugger(), gated on the "console_debugger"
+config option (setup_brkhandler returns early when it is false).
+
 Index: demoscene-toolchain/submodules/fs-uae/src/od-fs/uaemisc.cpp
 ===================================================================
 --- demoscene-toolchain.orig/submodules/fs-uae/src/od-fs/uaemisc.cpp

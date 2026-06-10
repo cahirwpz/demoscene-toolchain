@@ -1,3 +1,10 @@
+Quiet noisy debug output across fsemu, libfsemu and the core.
+
+Routes stray printf()s through the proper log functions (fsemu_log /
+fs_log), lowers fsemu_data_log_level to INFO, suppresses the startup
+copyright banner, and removes POSIX STUB() noise — leaving the console
+usable for the debugger.
+
 Index: demoscene-toolchain/submodules/fs-uae/fsemu/src/fsemu-video.c
 ===================================================================
 --- demoscene-toolchain.orig/submodules/fs-uae/fsemu/src/fsemu-video.c

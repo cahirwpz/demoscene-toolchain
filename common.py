@@ -76,6 +76,20 @@ def find_executable(name):
 
 
 @fill_in_args
+def require_packages(*packages):
+  """On Debian-based systems, verify required dev packages are installed."""
+  if not path.exists('/etc/debian_version'):
+    return
+  missing = [p for p in packages
+             if subprocess.call(['dpkg', '-s', p],
+                                stdout=subprocess.DEVNULL,
+                                stderr=subprocess.DEVNULL) != 0]
+  if missing:
+    panic('Missing packages: %s\nRun: sudo apt-get install %s',
+          ' '.join(missing), ' '.join(missing))
+
+
+@fill_in_args
 def find(root, **kwargs):
   only_files = kwargs.get('only_files', False)
   include = kwargs.get('include', ['*'])
@@ -448,4 +462,5 @@ def require_header(headers, lang='c', errmsg='', symbol=None, value=None):
 __all__ = ['setvar', 'panic', 'find_executable', 'chmod', 'execute', 'rmtree',
            'mkdir', 'copy', 'copytree', 'fetch', 'cwd', 'symlink', 'remove',
            'move', 'find', 'textfile', 'env', 'path', 'recipe', 'unpack',
-           'patch', 'configure', 'make', 'require_header', 'touch']
+           'patch', 'configure', 'make', 'require_header', 'require_packages',
+           'touch']

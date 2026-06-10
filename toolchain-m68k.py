@@ -30,14 +30,19 @@ URLS = \
     'salvador-1.4.2.tar.gz'),
    ('https://github.com/emmanuel-marty/lzsa/archive/refs/tags/1.4.1.tar.gz',
     'lzsa-1.4.1.tar.gz'),
+   ('https://github.com/libsdl-org/SDL/archive/refs/tags/release-3.4.10.tar.gz',
+    'SDL-3.4.10.tar.gz'),
+   ('https://github.com/libsdl-org/SDL_image/archive/refs/tags/release-3.4.4.tar.gz',
+    'SDL_image-3.4.4.tar.gz'),
    'https://ftp.gnu.org/old-gnu/gnu-0.2/src/flex-2.5.4.tar.gz',
    ('http://hp.alinea-computer.de/AmigaOS/NDK39.lha', 'NDK_3.9.lha'),
    ('http://phoenix.owl.de/tags/vasm1_9c.tar.gz', 'vasm.tar.gz')]
 
 
 from common import (setvar, execute, rmtree, configure, unpack, path, panic,
-        mkdir, env, make, touch, patch, require_header, copy, cwd, recipe,
-        find_executable, textfile, chmod, copytree, move, find, fetch)
+        mkdir, env, make, touch, patch, require_header, require_packages,
+        copy, cwd, recipe, find_executable, textfile, chmod, copytree, move,
+        find, fetch)
 
 
 @recipe('target-prepare')
@@ -135,6 +140,15 @@ def fs_uae_bootstrap():
     execute('sh', 'bootstrap')
 
 
+@recipe('cmake', 1)
+def cmake_configure(name, *opts, src_dir=None):
+  info('configuring "%s" with cmake', name)
+
+  src = src_dir or path.join('{submodules}', name)
+  with cwd(path.join('{build}', name)):
+    execute('cmake', '-S', src, '-B', '.', '-G', 'Unix Makefiles', *opts)
+
+
 def update_autotools(dst):
   copy('{sources}/{automake}/lib/config.guess', path.join(dst, 'config.guess'))
   copy('{sources}/{automake}/lib/config.sub', path.join(dst, 'config.sub'))
@@ -226,9 +240,30 @@ def build():
   find_executable('makeinfo')
   find_executable('git')
   find_executable('yacc')
+  find_executable('cmake')
 
   require_header(['ncurses.h', 'ncurses/ncurses.h'],
                  lang='c', errmsg='libncurses-dev package missing')
+
+  """
+  On Debian-based systems check upfront that every development package the build
+  relies on is installed, so a missing library fails fast with an apt-get hint
+  instead of a cryptic error deep inside the SDL/amiberry build. This list is the
+  source of truth mirrored by the Dockerfile.
+  """
+  require_packages(
+      'libsdl2-dev', 'libsdl2-ttf-dev', 'libpng-dev', 'libncurses-dev',
+      'libglib2.0-dev', 'libopenal-dev',
+      # SDL3 video/audio/input backends
+      'libx11-dev', 'libxext-dev', 'libxcursor-dev', 'libxi-dev',
+      'libxfixes-dev', 'libxrandr-dev', 'libxrender-dev', 'libxss-dev',
+      'libxkbcommon-dev', 'libwayland-dev', 'wayland-protocols',
+      'libdecor-0-dev', 'libgl1-mesa-dev', 'libegl1-mesa-dev',
+      'libgles2-mesa-dev', 'libdrm-dev', 'libgbm-dev', 'libasound2-dev',
+      'libpulse-dev', 'libudev-dev', 'libdbus-1-dev',
+      # SDL3_image codecs / AmiBerry deps
+      'libjpeg-dev', 'libflac-dev', 'libmpg123-dev', 'libcurl4-openssl-dev',
+      'nlohmann-json3-dev', 'zlib1g-dev')
 
   download()
   # Make sure the command does not output an error when you commit the patches
@@ -429,6 +464,50 @@ def build():
     make('{fsuae}', parallel=True)
     make('{fsuae}', 'install')
 
+  with env(CC=CC, CXX=CXX, CFLAGS=FLAGS, CXXFLAGS=FLAGS, PATH=PATH):
+    unpack('{sdl}', top_dir='SDL-release-3.4.10')
+    cmake_configure('{sdl}',
+                    '-DCMAKE_BUILD_TYPE=Release',
+                    '-DCMAKE_INSTALL_PREFIX={host}',
+                    '-DSDL_SHARED=ON',
+                    '-DSDL_STATIC=OFF',
+                    '-DSDL_TEST_LIBRARY=OFF',
+                    '-DSDL_X11_XTEST=OFF',
+                    src_dir='{sources}/{sdl}')
+    make('{sdl}', parallel=True)
+    make('{sdl}', 'install')
+
+    unpack('{sdl_image}', top_dir='SDL_image-release-3.4.4')
+    cmake_configure('{sdl_image}',
+                    '-DCMAKE_BUILD_TYPE=Release',
+                    '-DCMAKE_INSTALL_PREFIX={host}',
+                    '-DCMAKE_PREFIX_PATH={host}',
+                    '-DBUILD_SHARED_LIBS=ON',
+                    '-DSDLIMAGE_VENDORED=OFF',
+                    '-DSDLIMAGE_SAMPLES=OFF',
+                    '-DSDLIMAGE_TESTS=OFF',
+                    src_dir='{sources}/{sdl_image}')
+    make('{sdl_image}', parallel=True)
+    make('{sdl_image}', 'install')
+
+  with env(CC=CC, CXX=CXX, CFLAGS=FLAGS, CXXFLAGS=FLAGS, PATH=PATH):
+    cmake_configure('{amiberry}',
+                    '-DCMAKE_BUILD_TYPE=Release',
+                    '-DCMAKE_INSTALL_PREFIX={prefix}',
+                    '-DCMAKE_PREFIX_PATH={host}',
+                    '-DBUNDLE_SDL=ON',
+                    '-DUSE_JIT=OFF',
+                    '-DUSE_PCEM=OFF',
+                    '-DUSE_LIBSERIALPORT=OFF',
+                    '-DUSE_LIBENET=OFF',
+                    '-DUSE_PORTMIDI=OFF',
+                    '-DUSE_LIBMPEG2=OFF',
+                    '-DUSE_UAENET_PCAP=OFF',
+                    '-DUSE_UAENET_TAP=OFF',
+                    '-DUSE_ZSTD=OFF')
+    make('{amiberry}', parallel=True)
+    make('{amiberry}', 'install')
+
   unpack('{shrinkler}', work_dir='{build}')
   make('{shrinkler}')
   install_shrinkler()
@@ -491,6 +570,9 @@ if __name__ == "__main__":
          NDK='NDK_3.9',
          binutils='binutils-gdb',
          fsuae='fs-uae',
+         amiberry='amiberry',
+         sdl='SDL-3.4.10',
+         sdl_image='SDL_image-3.4.4',
          gcc='gcc-2.95.3',
          gcc_bebbo='gcc-bebbo',
          shrinkler='Shrinkler-4.7',

@@ -14,8 +14,8 @@ import sys
 
 from common import chmod, configure, copy, copytree, cwd, env, execute, exists, fetch
 from common import fill_in, find, find_executable, join, make, mkdir, move, panic, patch
-from common import path, recipe, remove, require_header, rmtree, setvar, textfile, touch
-from common import unpack
+from common import path, recipe, remove, require_header, require_packages, rmtree
+from common import setvar, textfile, touch, unpack
 from packages import PACKAGES, PACKAGE_VARS, resolve_package
 
 
@@ -90,6 +90,15 @@ def fs_uae_bootstrap():
 
     with cwd("{submodules}/{fsuae}"):
         execute("sh", "bootstrap")
+
+
+@recipe("cmake", 1)
+def cmake_configure(name, *opts, src_dir=None):
+    info('configuring "%s" with cmake', name)
+
+    src = src_dir or join("{submodules}", name)
+    with cwd(join("{build}", name)):
+        execute("cmake", "-S", src, "-B", ".", "-G", "Unix Makefiles", *opts)
 
 
 def update_autotools(dst):
@@ -177,6 +186,7 @@ def prepare_build_env():
   """
 
     find_executable("perl")
+    find_executable("pod2text")
     find_executable("pod2man")
     find_executable("gperf")
     find_executable("patch")
@@ -184,11 +194,54 @@ def prepare_build_env():
     find_executable("makeinfo")
     find_executable("git")
     find_executable("yacc")
+    find_executable("cmake")
 
     require_header(
         ["ncurses.h", "ncurses/ncurses.h"],
         lang="c",
         errmsg="libncurses-dev package missing",
+    )
+
+    # On Debian-based systems check upfront that every development package the
+    # build relies on is installed, so a missing library fails fast with an
+    # apt-get hint instead of a cryptic error deep inside the SDL/amiberry build.
+    # Keep the Dockerfile and the README package list in sync with this one.
+    require_packages(
+        "libsdl2-dev",
+        "libsdl2-ttf-dev",
+        "libpng-dev",
+        "libncurses-dev",
+        "libglib2.0-dev",
+        "libopenal-dev",
+        # SDL3 video/audio/input backends
+        "libx11-dev",
+        "libxext-dev",
+        "libxcursor-dev",
+        "libxi-dev",
+        "libxfixes-dev",
+        "libxrandr-dev",
+        "libxrender-dev",
+        "libxss-dev",
+        "libxkbcommon-dev",
+        "libwayland-dev",
+        "wayland-protocols",
+        "libdecor-0-dev",
+        "libgl1-mesa-dev",
+        "libegl1-mesa-dev",
+        "libgles2-mesa-dev",
+        "libdrm-dev",
+        "libgbm-dev",
+        "libasound2-dev",
+        "libpulse-dev",
+        "libudev-dev",
+        "libdbus-1-dev",
+        # SDL3_image codecs / AmiBerry deps
+        "libjpeg-dev",
+        "libflac-dev",
+        "libmpg123-dev",
+        "libcurl4-openssl-dev",
+        "nlohmann-json3-dev",
+        "zlib1g-dev",
     )
 
 
@@ -428,6 +481,64 @@ def phase_fs_uae():
         make("{fsuae}", "install")
 
 
+def phase_sdl():
+    with env(
+        CC="{cc}", CXX="{cxx}", CFLAGS="{flags}", CXXFLAGS="{flags}", PATH="{path}"
+    ):
+        unpack("{sdl}", top_dir="SDL-release-3.4.10")
+        cmake_configure(
+            "{sdl}",
+            "-DCMAKE_BUILD_TYPE=Release",
+            "-DCMAKE_INSTALL_PREFIX={host}",
+            "-DSDL_SHARED=ON",
+            "-DSDL_STATIC=OFF",
+            "-DSDL_TEST_LIBRARY=OFF",
+            "-DSDL_X11_XTEST=OFF",
+            src_dir="{sources}/{sdl}",
+        )
+        make("{sdl}", parallel=True)
+        make("{sdl}", "install")
+
+        unpack("{sdl_image}", top_dir="SDL_image-release-3.4.4")
+        cmake_configure(
+            "{sdl_image}",
+            "-DCMAKE_BUILD_TYPE=Release",
+            "-DCMAKE_INSTALL_PREFIX={host}",
+            "-DCMAKE_PREFIX_PATH={host}",
+            "-DBUILD_SHARED_LIBS=ON",
+            "-DSDLIMAGE_VENDORED=OFF",
+            "-DSDLIMAGE_SAMPLES=OFF",
+            "-DSDLIMAGE_TESTS=OFF",
+            src_dir="{sources}/{sdl_image}",
+        )
+        make("{sdl_image}", parallel=True)
+        make("{sdl_image}", "install")
+
+
+def phase_amiberry():
+    with env(
+        CC="{cc}", CXX="{cxx}", CFLAGS="{flags}", CXXFLAGS="{flags}", PATH="{path}"
+    ):
+        cmake_configure(
+            "{amiberry}",
+            "-DCMAKE_BUILD_TYPE=Release",
+            "-DCMAKE_INSTALL_PREFIX={prefix}",
+            "-DCMAKE_PREFIX_PATH={host}",
+            "-DBUNDLE_SDL=ON",
+            "-DUSE_JIT=OFF",
+            "-DUSE_PCEM=OFF",
+            "-DUSE_LIBSERIALPORT=OFF",
+            "-DUSE_LIBENET=OFF",
+            "-DUSE_PORTMIDI=OFF",
+            "-DUSE_LIBMPEG2=OFF",
+            "-DUSE_UAENET_PCAP=OFF",
+            "-DUSE_UAENET_TAP=OFF",
+            "-DUSE_ZSTD=OFF",
+        )
+        make("{amiberry}", parallel=True)
+        make("{amiberry}", "install")
+
+
 def phase_compressors():
     unpack("{shrinkler}", work_dir="{build}")
     make("{shrinkler}")
@@ -471,6 +582,8 @@ BUILD_PHASES = [
     ("gcc", phase_gcc, ["{gcc}-make*"]),
     ("gcc-bebbo", phase_gcc_bebbo, ["{gcc_bebbo}-make*"]),
     ("fs-uae", phase_fs_uae, ["{fsuae}-make*"]),
+    ("sdl", phase_sdl, ["{sdl}-make*", "{sdl_image}-make*"]),
+    ("amiberry", phase_amiberry, ["{amiberry}-make*"]),
     (
         "compressors",
         phase_compressors,
@@ -592,6 +705,7 @@ if __name__ == "__main__":
         **PACKAGE_VARS,
         binutils="binutils-gdb",
         fsuae="fs-uae",
+        amiberry="amiberry",
         gcc="gcc-2.95.3",
         gcc_bebbo="gcc-bebbo",
         target="m68k-amigaos",

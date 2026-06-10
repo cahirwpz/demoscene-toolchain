@@ -10,10 +10,16 @@ Supported host: Ubuntu 26.04 (x86-64). Install the build dependencies:
 
 ```sh
 sudo apt install --no-install-recommends \
-     automake autoconf bison ca-certificates flex gcc g++ gettext git gperf \
-     libc6-dev libglib2.0-dev libncurses-dev libopenal-dev libpng-dev \
-     libsdl2-dev libsdl2-ttf-dev libtool make patch perl pkg-config python3 \
-     python3-dev python3-venv quilt texinfo zip
+     autoconf automake bison ca-certificates cmake flex g++ gcc gettext git \
+     gperf libasound2-dev libc6-dev libcurl4-openssl-dev libdbus-1-dev \
+     libdecor-0-dev libdrm-dev libegl1-mesa-dev libflac-dev libgbm-dev \
+     libgl1-mesa-dev libgles2-mesa-dev libglib2.0-dev libjpeg-dev libmpg123-dev \
+     libncurses-dev libopenal-dev libpng-dev libpulse-dev libsdl2-dev \
+     libsdl2-ttf-dev libtool libudev-dev libwayland-dev libx11-dev \
+     libxcursor-dev libxext-dev libxfixes-dev libxi-dev libxkbcommon-dev \
+     libxrandr-dev libxrender-dev libxss-dev make nlohmann-json3-dev patch perl \
+     pkg-config python3 python3-dev python3-venv quilt texinfo \
+     wayland-protocols zip zlib1g-dev
 ```
 
 Only the listed packages are required; recommended packages are not needed.

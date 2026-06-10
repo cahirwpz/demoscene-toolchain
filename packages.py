@@ -86,6 +86,20 @@ PACKAGES = [
         "{name}.tar.gz",
     ),
     Package(
+        "sdl",
+        "3.4.10",
+        "SDL-{version}",
+        "https://github.com/libsdl-org/SDL/archive/refs/tags/release-{version}.tar.gz",
+        "{name}.tar.gz",
+    ),
+    Package(
+        "sdl_image",
+        "3.4.4",
+        "SDL_image-{version}",
+        "https://github.com/libsdl-org/SDL_image/archive/refs/tags/release-{version}.tar.gz",
+        "{name}.tar.gz",
+    ),
+    Package(
         "flex",
         "2.5.4",
         "flex-{version}",

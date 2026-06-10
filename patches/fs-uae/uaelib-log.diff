@@ -1,3 +1,9 @@
+Add uaelib trap 40 (Log): a printf-style logger callable from the guest.
+
+emulib_Log(fmt, ...) reads its varargs from the Amiga stack and formats
+them with a self-contained kprintf (taken from NetBSD sys/lib/libsa) into
+a new file src/uaelib_log.cpp. Also line-buffers stdout in amiga_init().
+
 Index: demoscene-toolchain/submodules/fs-uae/src/od-fs/libamiga.cpp
 ===================================================================
 --- demoscene-toolchain.orig/submodules/fs-uae/src/od-fs/libamiga.cpp

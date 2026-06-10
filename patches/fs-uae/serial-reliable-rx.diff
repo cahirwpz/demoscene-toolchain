@@ -1,3 +1,9 @@
+Do not lose received serial bytes.
+
+In checkreceive_serial(), if a byte is already pending in SERDATR
+(data_in_serdatr), re-assert the serial IRQ and return instead of reading
+another host byte and overwriting the unread one.
+
 Index: demoscene-toolchain/submodules/fs-uae/src/od-win32/serial_win32.cpp
 ===================================================================
 --- demoscene-toolchain.orig/submodules/fs-uae/src/od-win32/serial_win32.cpp

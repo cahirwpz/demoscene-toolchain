@@ -1,3 +1,7 @@
+Confirm when a memwatch (watchpoint) is added in the debugger.
+
+Prints "Memwatch %d added" in the debugger's memwatch() command.
+
 Index: demoscene-toolchain/submodules/fs-uae/src/debug.cpp
 ===================================================================
 --- demoscene-toolchain.orig/submodules/fs-uae/src/debug.cpp

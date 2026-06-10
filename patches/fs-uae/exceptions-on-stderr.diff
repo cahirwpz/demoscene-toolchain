@@ -1,3 +1,10 @@
+Print CPU exceptions unconditionally on the console.
+
+The added console_out_f() in exception_debug() sits outside the
+#ifdef DEBUGGER / exception_debugging guard, so exceptions are shown even
+with the debugger off. Also routes the exception-breakpoint message in
+ExceptionX() through console_out_f() (stderr) instead of write_log().
+
 Index: demoscene-toolchain/submodules/fs-uae/src/newcpu.cpp
 ===================================================================
 --- demoscene-toolchain.orig/submodules/fs-uae/src/newcpu.cpp

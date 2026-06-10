@@ -1,3 +1,9 @@
+Allow building with PPC support disabled.
+
+Guards the two uae_ppc_wakeup_main() calls in cpuboard_rethink() with
+#ifdef WITH_PPC, which upstream left unguarded, so the source compiles
+when the WITH_PPC configure feature is off.
+
 Index: demoscene-toolchain/submodules/fs-uae/src/cpuboard.cpp
 ===================================================================
 --- demoscene-toolchain.orig/submodules/fs-uae/src/cpuboard.cpp

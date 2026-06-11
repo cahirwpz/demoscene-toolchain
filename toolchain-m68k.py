@@ -335,7 +335,7 @@ def download():
     execute("git", "submodule", "update")
 
 
-def build():
+def prepare_build_env():
     for var in list(environ.keys()):
         if var not in ["_", "LOGNAME", "HOME", "SHELL", "TMPDIR", "PWD"]:
             del environ[var]
@@ -376,7 +376,7 @@ def build():
     environ["CXX"] = CXX
     environ["PATH"] = ":".join([join("{prefix}", "bin"), join("{host}", "bin"), PATH])
 
-    setvar(cc=environ["CC"], cxx=environ["CXX"])
+    setvar(cc=environ["CC"], cxx=environ["CXX"], flags=FLAGS, path=PATH)
 
     """
   When we have a working compiler in our path, we shoule also check if the
@@ -444,10 +444,14 @@ def build():
         "zlib1g-dev",
     )
 
+
+def phase_download():
     download()
     # Make sure the command does not output an error when you commit the patches
     execute("quilt", "push", "-a", ignore_errors=True)
 
+
+def phase_host_tools():
     unpack("{automake}")
 
     unpack("{m4}")
@@ -489,6 +493,8 @@ def build():
     make("{autoconf}", parallel=True)
     make("{autoconf}", "install")
 
+
+def phase_gcc_deps():
     unpack("{gmp}")
     configure("{gmp}", "--prefix={host}", "--disable-shared", "--enable-static")
     make("{gmp}", parallel=True)
@@ -528,6 +534,8 @@ def build():
     make("{isl}", parallel=True)
     make("{isl}", "install")
 
+
+def phase_target():
     prepare_target()
 
     unpack("vasm", work_dir="{build}")
@@ -553,7 +561,11 @@ def build():
     patch("{NDK}")
     install_ndk()
 
-    with env(CC=CC, CXX=CXX, CFLAGS=FLAGS, CXXFLAGS=FLAGS, PATH=PATH):
+
+def phase_binutils():
+    with env(
+        CC="{cc}", CXX="{cxx}", CFLAGS="{flags}", CXXFLAGS="{flags}", PATH="{path}"
+    ):
         configure(
             "{binutils}",
             "--prefix={prefix}",
@@ -580,10 +592,14 @@ def build():
         make("{binutils}", "install-ld")
         make("{binutils}", "install-gdb")
 
-    CCOLD = " ".join([CC, "-std=gnu99"])
-    CXXOLD = " ".join([CXX, "-std=gnu++11"])
 
-    with env(CC=CCOLD, CXX=CXXOLD, CFLAGS=FLAGS, CXXFLAGS=FLAGS):
+def phase_gcc():
+    with env(
+        CC="{cc} -std=gnu99",
+        CXX="{cxx} -std=gnu++11",
+        CFLAGS="{flags}",
+        CXXFLAGS="{flags}",
+    ):
         configure(
             "{gcc}",
             "--prefix={prefix}",
@@ -603,7 +619,9 @@ def build():
         make("{gcc}", "all-gcc", MAKEINFO="makeinfo")
         make("{gcc}", "install-gcc", MAKEINFO="makeinfo")
 
-    with env(CC=CC, CXX=CXX, CFLAGS=FLAGS, CXXFLAGS=FLAGS):
+
+def phase_gcc_bebbo():
+    with env(CC="{cc}", CXX="{cxx}", CFLAGS="{flags}", CXXFLAGS="{flags}"):
         configure(
             "{gcc_bebbo}",
             "--prefix={prefix}",
@@ -625,7 +643,11 @@ def build():
         make("{gcc_bebbo}", "all-gcc", parallel=True)
         make("{gcc_bebbo}", "install-gcc")
 
-    with env(CC=CC, CXX=CXX, CFLAGS=FLAGS, CXXFLAGS=FLAGS, PATH=PATH):
+
+def phase_fs_uae():
+    with env(
+        CC="{cc}", CXX="{cxx}", CFLAGS="{flags}", CXXFLAGS="{flags}", PATH="{path}"
+    ):
         fs_uae_bootstrap()
         configure(
             "{fsuae}",
@@ -654,7 +676,11 @@ def build():
         make("{fsuae}", parallel=True)
         make("{fsuae}", "install")
 
-    with env(CC=CC, CXX=CXX, CFLAGS=FLAGS, CXXFLAGS=FLAGS, PATH=PATH):
+
+def phase_sdl():
+    with env(
+        CC="{cc}", CXX="{cxx}", CFLAGS="{flags}", CXXFLAGS="{flags}", PATH="{path}"
+    ):
         unpack("{sdl}", top_dir="SDL-release-3.4.10")
         cmake_configure(
             "{sdl}",
@@ -684,7 +710,11 @@ def build():
         make("{sdl_image}", parallel=True)
         make("{sdl_image}", "install")
 
-    with env(CC=CC, CXX=CXX, CFLAGS=FLAGS, CXXFLAGS=FLAGS, PATH=PATH):
+
+def phase_amiberry():
+    with env(
+        CC="{cc}", CXX="{cxx}", CFLAGS="{flags}", CXXFLAGS="{flags}", PATH="{path}"
+    ):
         cmake_configure(
             "{amiberry}",
             "-DCMAKE_BUILD_TYPE=Release",
@@ -704,6 +734,8 @@ def build():
         make("{amiberry}", parallel=True)
         make("{amiberry}", "install")
 
+
+def phase_compressors():
     unpack("{shrinkler}", work_dir="{build}")
     make("{shrinkler}")
     install_shrinkler()
@@ -715,6 +747,40 @@ def build():
     unpack("{lzsa}", work_dir="{build}")
     make("{lzsa}", CC="gcc")
     install_lzsa()
+
+
+# Ordered build phases. `build` with no arguments runs them all in order; named
+# arguments (e.g. "build amiberry") run only those phases, assuming their
+# dependencies were already built. Stamps still gate the steps inside each phase.
+BUILD_PHASES = [
+    ("download", phase_download),
+    ("host-tools", phase_host_tools),
+    ("gcc-deps", phase_gcc_deps),
+    ("target", phase_target),
+    ("binutils", phase_binutils),
+    ("gcc", phase_gcc),
+    ("gcc-bebbo", phase_gcc_bebbo),
+    ("fs-uae", phase_fs_uae),
+    ("sdl", phase_sdl),
+    ("amiberry", phase_amiberry),
+    ("compressors", phase_compressors),
+]
+
+
+def build(*names):
+    available = [name for name, _ in BUILD_PHASES]
+    unknown = [n for n in names if n not in available]
+    if unknown:
+        panic(
+            "unknown build component(s): %s; available: %s",
+            ", ".join(unknown),
+            ", ".join(available),
+        )
+    selected = set(names) if names else set(available)
+    prepare_build_env()
+    for name, fn in BUILD_PHASES:
+        if name in selected:
+            fn()
 
 
 def clean():
@@ -752,7 +818,11 @@ if __name__ == "__main__":
         help="perform action",
     )
     parser.add_argument(
-        "args", metavar="ARGS", type=str, nargs="*", help="action arguments"
+        "args",
+        metavar="ARGS",
+        type=str,
+        nargs="*",
+        help="build components to (re)build (default: all); see BUILD_PHASES",
     )
     parser.add_argument("-q", "--quiet", action="store_true")
     parser.add_argument(

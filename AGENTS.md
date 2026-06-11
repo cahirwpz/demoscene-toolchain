@@ -11,3 +11,6 @@
   `.build-m68k/build/<component>` dir and its `<component>-configure` stamp.
 - **Build one component:** `./toolchain-m68k.py build <component>` (names in
   `BUILD_PHASES`); assumes its dependencies are already built.
+- **Rebuild one component:** `./toolchain-m68k.py rebuild <component>` deletes
+  its `<component>-make*` stamps and reruns `build <component>`; configure is
+  kept.

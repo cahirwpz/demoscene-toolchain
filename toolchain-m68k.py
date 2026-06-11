@@ -147,6 +147,7 @@ from common import (  # noqa: E402
     setvar,
     execute,
     rmtree,
+    remove,
     configure,
     unpack,
     path,
@@ -767,7 +768,7 @@ BUILD_PHASES = [
 ]
 
 
-def build(*names):
+def _validate_components(names):
     available = [name for name, _ in BUILD_PHASES]
     unknown = [n for n in names if n not in available]
     if unknown:
@@ -776,11 +777,25 @@ def build(*names):
             ", ".join(unknown),
             ", ".join(available),
         )
+    return available
+
+
+def build(*names):
+    available = _validate_components(names)
     selected = set(names) if names else set(available)
     prepare_build_env()
     for name, fn in BUILD_PHASES:
         if name in selected:
             fn()
+
+
+def rebuild(*names):
+    if not names:
+        panic("rebuild requires at least one build component; see BUILD_PHASES")
+    _validate_components(names)
+    for name in names:
+        remove(glob(join("{stamps}", f"{name}-make*")))
+    build(*names)
 
 
 def clean():
@@ -813,7 +828,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Build cross toolchain.")
     parser.add_argument(
         "action",
-        choices=["build", "clean", "download"],
+        choices=["build", "clean", "download", "rebuild"],
         default="build",
         help="perform action",
     )

@@ -12,8 +12,6 @@ import logging
 import platform
 import sys
 
-environ["DONTWRITEBYTECODE"] = "y"
-
 URLS = [
     "https://ftp.gnu.org/gnu/m4/m4-1.4.17.tar.gz",
     "https://ftp.gnu.org/gnu/gawk/gawk-3.1.8.tar.gz",
@@ -170,7 +168,7 @@ def download():
     with cwd("{archives}"):
         for url in URLS:
             sha256 = None
-            if type(url) is tuple:
+            if isinstance(url, tuple):
                 url, name, sha256 = (url + (None,))[:3]
             else:
                 name = path.basename(url)

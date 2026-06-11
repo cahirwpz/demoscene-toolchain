@@ -3,7 +3,8 @@
 PREFIX=${PREFIX:-/opt/amiga}
 
 mkdir -p ${PREFIX} || exit 1
-./toolchain-m68k build --prefix=${PREFIX}
+source activate
+python3 toolchain-m68k.py build --prefix=${PREFIX}
 mkdir -p debian/tmp/${PREFIX}
 cp -a ${PREFIX}/* debian/tmp/${PREFIX}/
 make -f ./debian/rules binary

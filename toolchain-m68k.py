@@ -768,8 +768,12 @@ BUILD_PHASES = [
 ]
 
 
+def _component_names():
+    return [name for name, _ in BUILD_PHASES]
+
+
 def _validate_components(names):
-    available = [name for name, _ in BUILD_PHASES]
+    available = _component_names()
     unknown = [n for n in names if n not in available]
     if unknown:
         panic(
@@ -791,7 +795,10 @@ def build(*names):
 
 def rebuild(*names):
     if not names:
-        panic("rebuild requires at least one build component; see BUILD_PHASES")
+        panic(
+            "rebuild requires at least one build component; available: %s",
+            ", ".join(_component_names()),
+        )
     _validate_components(names)
     for name in names:
         remove(glob(join("{stamps}", f"{name}-make*")))
@@ -825,7 +832,11 @@ if __name__ == "__main__":
     if platform.machine() not in ["i686", "x86_64"]:
         panic("Build on %s architecture not supported!", platform.machine())
 
-    parser = argparse.ArgumentParser(description="Build cross toolchain.")
+    parser = argparse.ArgumentParser(
+        description="Build cross toolchain.",
+        epilog="build components (in order): " + ", ".join(_component_names()),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     parser.add_argument(
         "action",
         choices=["build", "clean", "download", "rebuild"],
@@ -837,7 +848,7 @@ if __name__ == "__main__":
         metavar="ARGS",
         type=str,
         nargs="*",
-        help="build components to (re)build (default: all); see BUILD_PHASES",
+        help="build components to (re)build (default: all); see list below",
     )
     parser.add_argument("-q", "--quiet", action="store_true")
     parser.add_argument(

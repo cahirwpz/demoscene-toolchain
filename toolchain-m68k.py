@@ -489,6 +489,9 @@ def clean():
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s")
 
+    if "VIRTUAL_ENV" not in environ:
+        panic('Please run "source activate" before executing this script.')
+
     if not sys.version_info[:2] >= (3, 5):
         panic("I need Python 3.5 to run!")
 

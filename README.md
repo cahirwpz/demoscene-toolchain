@@ -20,12 +20,14 @@ sudo apt install --no-install-recommends \
 
 Only the listed packages are required; recommended packages are not needed.
 
-Clone with submodules and build (default prefix is `./m68k-amigaos`):
+Clone with submodules and build (default prefix is `./m68k-amigaos`).
+`source activate` sets up the Python venv in `.venv`; the script requires it:
 
 ```
 git clone --recurse-submodules https://github.com/cahirwpz/demoscene-toolchain
 cd demoscene-toolchain
-./toolchain-m68k build [--prefix=/opt/amiga]
+source activate
+./toolchain-m68k.py build [--prefix=/opt/amiga]
 ```
 
 To build a Debian package (needs `debhelper` and `fakeroot`):

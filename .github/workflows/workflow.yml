@@ -6,6 +6,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container: cahirwpz/demoscene-toolchain:latest
+    defaults:
+      run:
+        shell: bash
 
     steps:
     - uses: actions/checkout@v4

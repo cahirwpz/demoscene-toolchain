@@ -19,3 +19,8 @@ fs-uae/serial-reliable-rx.diff
 fs-uae/uaelib-debugdma.diff
 fs-uae/uaelib-trace.diff
 fs-uae/uaelib-memprotect.diff
+amiberry/uaelib-log.diff
+amiberry/uaelib-warpmode.diff
+amiberry/uaelib-debugdma.diff
+amiberry/uaelib-trace.diff
+amiberry/uaelib-memprotect.diff

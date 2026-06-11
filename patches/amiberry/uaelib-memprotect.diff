@@ -1,0 +1,229 @@
+Add guest-driven memory protection via uaelib traps 48-50 (DEBUGGER only).
+
+A deny-by-default allow-list over all RAM, tracked per 16-bit word as an OR of
+MW_MASK_* component bits. emulib_MemProtectAllow/Deny adjust permissions and
+emulib_MemProtectActivate enables enforcement (one-way): any access whose
+component is not permitted for that word breaks into the debugger with a
+dedicated "Memprotect:" message. Hooks into the existing memwatch machinery.
+Index: demoscene-toolchain/submodules/amiberry/src/debug.cpp
+===================================================================
+--- demoscene-toolchain.orig/submodules/amiberry/src/debug.cpp
++++ demoscene-toolchain/submodules/amiberry/src/debug.cpp
+@@ -3886,6 +3886,12 @@ struct memwatch_node mwnodes[MEMWATCH_TO
+ static int mwnodes_start, mwnodes_end;
+ static struct memwatch_node mwhit;
+ 
++/* Memory protection (deny-by-default allow-list); see memprotect_* below. */
++static uae_u32 **prot_tables;
++static int memprotect_active;
++static int memprotect_triggered;
++#define PROT_BANK_WORDS (65536 / 2)
++
+ #define MUNGWALL_SLOTS 16
+ struct mungwall_data
+ {
+@@ -4391,6 +4397,23 @@ static void memwatch_hit_msg(int mw)
+ 	}
+ }
+ 
++/* Dedicated report for a memory-protection violation; mirrors memwatch_hit_msg
++ * but is clearly labelled so it isn't mistaken for a watchpoint hit. */
++static void memprotect_hit_msg(void)
++{
++	console_out_f(_T("Memprotect: break at %08X.%c %c%c%c %08X PC=%08X "), mwhit.addr,
++		mwhit.size == 1 ? 'B' : (mwhit.size == 2 ? 'W' : 'L'),
++		(mwhit.rwi & 1) ? 'R' : ' ', (mwhit.rwi & 2) ? 'W' : ' ', (mwhit.rwi & 4) ? 'I' : ' ',
++		mwhit.val, mwhit.pc);
++	for (int i = 0; memwatch_access_masks[i].mask; i++) {
++		if (mwhit.access_mask == memwatch_access_masks[i].mask)
++			console_out_f(_T("%s (%03x)\n"), memwatch_access_masks[i].name, mwhit.reg);
++	}
++	if (mwhit.access_mask & (MW_MASK_BLITTER_A | MW_MASK_BLITTER_B | MW_MASK_BLITTER_C | MW_MASK_BLITTER_D_N | MW_MASK_BLITTER_D_L | MW_MASK_BLITTER_D_F)) {
++		blitter_debugdump();
++	}
++}
++
+ static int memwatch_func (uaecptr addr, int rwi, int size, uae_u32 *valp, uae_u32 accessmask, uae_u32 reg)
+ {
+ 	uae_u32 val = *valp;
+@@ -4409,6 +4432,34 @@ static int memwatch_func (uaecptr addr,
+ 
+ 	addr = munge24 (addr);
+ 
++	if (memprotect_active) {
++		uae_u32 *t = prot_tables[addr >> 16];   /* addr is munge24'd; index in range */
++		if (t) {
++			bool denied = false;
++			for (uaecptr a = addr; a < addr + size; a = (a & ~1) + 2) {
++				if ((accessmask & t[(a & 0xffff) >> 1]) == 0) {
++					denied = true;
++					break;
++				}
++			}
++			if (denied) {
++				mwhit.addr = addr;
++				mwhit.rwi = rwi;
++				mwhit.size = size;
++				mwhit.access_mask = accessmask;
++				mwhit.reg = reg;
++				mwhit.val = (rwi & 2) ? val : 0;
++				mwhit.pc = M68K_GETPC;
++				memprotect_triggered = 1;
++				debugging = 1;
++				debug_pc = M68K_GETPC;
++				debug_cycles (1);
++				set_special (SPCFLAG_BRK);
++				return 1;
++			}
++		}
++	}
++
+ 	if (smc_table && (rwi >= 2))
+ 		smc_detector (addr, rwi, size, valp);
+ 
+@@ -4998,6 +5049,62 @@ static void initialize_memwatch (int mod
+ 		memwatch_enabled = 1;
+ }
+ 
++/*
++ * Memory protection: deny-by-default allow-list over all RAM.
++ *
++ * prot_tables[bank][(addr & 0xffff) >> 1] holds, per 16-bit word of guest RAM
++ * (Agnus DMA word granularity), the OR of MW_MASK_* component bits permitted to
++ * access that word. A NULL bank table means "not protected" (non-RAM, or not yet
++ * allocated). Once activated, any access to a protected word whose component bit
++ * is not set breaks into the debugger; with nothing granted, every access to RAM
++ * breaks.
++ * (prot_tables / memprotect_active / PROT_BANK_WORDS are declared above, before
++ * memwatch_func, which reads the table on the access hot path.)
++ */
++static void memprotect_ensure_tables (void)
++{
++	if (!memwatch_enabled) {
++		initialize_memwatch (0);
++		memwatch_access_validator = 0;
++	}
++	if (!prot_tables)
++		prot_tables = xcalloc (uae_u32 *, membank_total);
++	for (int b = 0; b < membank_total; b++) {
++		if (prot_tables[b])
++			continue;
++		addrbank *ab = &get_mem_bank ((uaecptr)b << 16);
++		if (ab->flags & ABFLAG_RAM)
++			prot_tables[b] = xcalloc (uae_u32, PROT_BANK_WORDS);
++	}
++}
++
++void memprotect_set (uaecptr addr, uae_u32 size, uae_u32 allow_mask, uae_u32 deny_mask)
++{
++	if (size == 0)
++		return;
++	memprotect_ensure_tables ();
++	for (uaecptr a = addr & ~1; a < addr + size; a += 2) {
++		uae_u32 *t = prot_tables[(a >> 16) & (membank_total - 1)];
++		if (!t)
++			continue;
++		uae_u32 *slot = &t[(a & 0xffff) >> 1];
++		*slot |= allow_mask;
++		*slot &= ~deny_mask;
++	}
++}
++
++int memprotect_activate (void)
++{
++	memprotect_ensure_tables ();
++	for (int b = 0; b < membank_total; b++) {
++		addrbank *ab = &get_mem_bank ((uaecptr)b << 16);
++		if (ab->flags & ABFLAG_RAM)
++			memwatch_remap ((uaecptr)b << 16);
++	}
++	memprotect_active = 1;
++	return 0;
++}
++
+ int debug_bankchange (int mode)
+ {
+ 	if (mode == -1) {
+@@ -8220,7 +8327,7 @@ void debug (void)
+ 	}
+ #endif
+ 
+-	if (!memwatch_triggered) {
++	if (!memwatch_triggered && !memprotect_triggered) {
+ 		if (trace_mode) {
+ 			uae_u32 pc;
+ 			uae_u16 opcode;
+@@ -8357,6 +8464,9 @@ void debug (void)
+ 			}
+ 			debug_cycles(1);
+ 		}
++	} else if (memprotect_triggered) {
++		memprotect_hit_msg();
++		memprotect_triggered = 0;
+ 	} else {
+ 		memwatch_hit_msg(memwatch_triggered - 1);
+ 		memwatch_triggered = 0;
+Index: demoscene-toolchain/submodules/amiberry/src/include/debug.h
+===================================================================
+--- demoscene-toolchain.orig/submodules/amiberry/src/include/debug.h
++++ demoscene-toolchain/submodules/amiberry/src/include/debug.h
+@@ -188,6 +188,8 @@ struct memwatch_node {
+ extern struct memwatch_node mwnodes[MEMWATCH_TOTAL];
+ 
+ extern void memwatch_dump2 (TCHAR *buf, int bufsize, int num);
++extern void memprotect_set (uaecptr addr, uae_u32 size, uae_u32 allow_mask, uae_u32 deny_mask);
++extern int memprotect_activate (void);
+ extern void debug_dma_set_mode (int mode);
+ 
+ void debug_getpeekdma_chipram(uaecptr addr, uae_u32 mask, int reg);
+Index: demoscene-toolchain/submodules/amiberry/src/uaelib.cpp
+===================================================================
+--- demoscene-toolchain.orig/submodules/amiberry/src/uaelib.cpp
++++ demoscene-toolchain/submodules/amiberry/src/uaelib.cpp
+@@ -985,6 +985,34 @@ static uae_u32 emulib_TraceEvent(TrapCon
+   return 0;
+ }
+ 
++#ifdef DEBUGGER
++/*
++ * Memory protection (deny-by-default allow-list over all RAM).
++ * Permissions are tracked per 16-bit word (Agnus DMA granularity) as an OR of
++ * MW_MASK_* component bits permitted to touch each word.
++ * emulib_MemProtectAllow grants the given component bits over [addr, addr+size);
++ * emulib_MemProtectDeny revokes them (pass MW_MASK_ALL to deny the range fully).
++ * emulib_MemProtectActivate turns enforcement on, one-way: afterwards any access
++ * to RAM whose component is not permitted for that word breaks the debugger.
++ */
++static uae_u32 emulib_MemProtectAllow(uae_u32 addr, uae_u32 size, uae_u32 mask)
++{
++	memprotect_set(addr, size, mask, 0);
++	return 0;
++}
++
++static uae_u32 emulib_MemProtectDeny(uae_u32 addr, uae_u32 size, uae_u32 mask)
++{
++	memprotect_set(addr, size, 0, mask);
++	return 0;
++}
++
++static uae_u32 emulib_MemProtectActivate(void)
++{
++	return memprotect_activate();
++}
++#endif
++
+ static uae_u32 uaelib_demux_common(TrapContext *ctx, uae_u32 ARG0, uae_u32 ARG1, uae_u32 ARG2, uae_u32 ARG3, uae_u32 ARG4, uae_u32 ARG5)
+ {
+ 	write_log("%ld\n",ARG0);
+@@ -1012,6 +1040,11 @@ static uae_u32 uaelib_demux_common(TrapC
+ 		case 41: return emulib_WarpMode(ARG1);
+ 		case 42: return emulib_DebugDMA(ARG1);
+ 		case 43 ... 47: return emulib_TraceEvent(ctx, ARG0, ARG1, ARG2, ARG3);
++#ifdef DEBUGGER
++		case 48: return emulib_MemProtectAllow(ARG1, ARG2, ARG3);
++		case 49: return emulib_MemProtectDeny(ARG1, ARG2, ARG3);
++		case 50: return emulib_MemProtectActivate();
++#endif
+ 
+ 		case 68: return emulib_Minimize();
+ 		case 69: return emulib_ExecuteNativeCode();

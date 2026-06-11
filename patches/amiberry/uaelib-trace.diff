@@ -1,0 +1,339 @@
+Add Chrome-trace-format event tracing via uaelib traps 43-47.
+
+log_trace_event() emits JSON trace events (Begin/End/Counter/Instant/Metadata)
+over the parallel/printer TCP channel (sendprinter). Guest code drives it through
+emulib_TraceEvent (traps 43-47), reading args via the trap context; the blitter
+and disk code are instrumented to emit events too.
+Index: demoscene-toolchain/submodules/amiberry/src/blitter.cpp
+===================================================================
+--- demoscene-toolchain.orig/submodules/amiberry/src/blitter.cpp
++++ demoscene-toolchain/submodules/amiberry/src/blitter.cpp
+@@ -459,6 +459,8 @@ static void blitter_done_all(bool all)
+ 	if (all) {
+ 		blitter_done_notify();
+ 	}
++	log_trace_event((trace_event){.type = 'E', .pid = 0, .tid = 6},
++		"Ucycles", blit_totalcyclecounter + blit_misscyclecounter, NULL);
+ }
+ 
+ static void blit_chipmem_agnus_wput(uaecptr addr, uae_u32 w, uae_u32 typemask)
+@@ -2055,6 +2057,9 @@ void do_blitter(int copper, uaecptr pc)
+ 
+ 	blitter_start_init();
+ 
++	log_trace_event((trace_event){.type = 'B', .pid = 0, .tid = 6, .name = "blit"},
++		"Ppc", M68K_GETPC, "Ihsize", blt_info.hblitsize, "Ivsize", blt_info.vblitsize, NULL);
++
+ 	if (blitline) {
+ 		cycles = blt_info.vblitsize * blt_info.hblitsize;
+ 	} else {
+Index: demoscene-toolchain/submodules/amiberry/src/disk.cpp
+===================================================================
+--- demoscene-toolchain.orig/submodules/amiberry/src/disk.cpp
++++ demoscene-toolchain/submodules/amiberry/src/disk.cpp
+@@ -3880,6 +3880,7 @@ static void disk_dmafinished(void)
+ #if DISK_DEBUG_X
+ 	write_log("dma finished %d %08x\n", floppy[0].mfmpos, M68K_GETPC);
+ #endif
++	log_trace_event((trace_event){.type = 'E', .pid = 0, .tid = 1}, NULL);
+ }
+ 
+ static void fetchnextrevolution (drive *drv)
+@@ -4989,6 +4990,10 @@ static void DSKLEN_2(uae_u16 v, int hpos
+ 		}
+ 	}
+ 
++	log_trace_event((trace_event){.type = 'B', .pid = 0, .tid = 1,
++		.name = (dskdmaen == DSKDMA_WRITE ? "write" : "read")},
++		"Idrive", dr, "Itrack", dr < MAX_FLOPPY_DRIVES ? floppy[dr].cyl * 2 + side : 0, NULL);
++
+ 	for (dr = 0; dr < MAX_FLOPPY_DRIVES; dr++)
+ 		update_drive_gui (dr, false);
+ 
+Index: demoscene-toolchain/submodules/amiberry/src/include/debug.h
+===================================================================
+--- demoscene-toolchain.orig/submodules/amiberry/src/include/debug.h
++++ demoscene-toolchain/submodules/amiberry/src/include/debug.h
+@@ -363,4 +363,13 @@ STATIC_INLINE void activate_debugger (vo
+ 
+ #endif /* DEBUGGER */
+ 
++/* Trace Event Format */
++struct trace_event {
++	char type, scope;
++	int pid, tid;
++	const char *name;
++};
++
++extern void log_trace_event(struct trace_event ev, ...);
++
+ #endif /* UAE_DEBUG_H */
+Index: demoscene-toolchain/submodules/amiberry/src/include/parallel.h
+===================================================================
+--- demoscene-toolchain.orig/submodules/amiberry/src/include/parallel.h
++++ demoscene-toolchain/submodules/amiberry/src/include/parallel.h
+@@ -6,6 +6,7 @@
+ extern int isprinter (void);
+ extern void doprinter (uae_u8);
+ extern void flushprinter (void);
++extern void sendprinter (const char *buf, size_t len);
+ extern void closeprinter (void);
+ extern int isprinteropen (void);
+ extern void initparallel (void);
+Index: demoscene-toolchain/submodules/amiberry/src/parser.cpp
+===================================================================
+--- demoscene-toolchain.orig/submodules/amiberry/src/parser.cpp
++++ demoscene-toolchain/submodules/amiberry/src/parser.cpp
+@@ -201,6 +201,24 @@ void doprinter (uae_u8 val)
+ #endif
+ }
+ 
++/* Write a raw block to the parallel/printer port when it is in TCP mode.
++ * Used to stream Chrome-trace JSON out of the emulator (see uaelib trace). */
++void sendprinter (const char *buf, size_t len)
++{
++	if (parallel_mode == PARALLEL_MODE_TCP_PRINTER) {
++		if (parallel_tcp_connected()) {
++			for (size_t sent = 0; sent < len; ) {
++				int n = uae_socket_write(parallel_tcp, buf + sent, (int)(len - sent));
++				if (n <= 0) {
++					parallel_tcp_disconnect ();
++					return;
++				}
++				sent += n;
++			}
++		}
++	}
++}
++
+ struct uaeserialdata
+ {
+ #ifdef USE_LIBSERIALPORT
+Index: demoscene-toolchain/submodules/amiberry/src/uaelib.cpp
+===================================================================
+--- demoscene-toolchain.orig/submodules/amiberry/src/uaelib.cpp
++++ demoscene-toolchain/submodules/amiberry/src/uaelib.cpp
+@@ -27,6 +27,8 @@
+ #include "picasso96.h"
+ #include "filesys.h"
+ #include "inputdevice.h"
++#include "parallel.h"
++#include "custom.h"
+ #ifdef AMIBERRY
+ #include "target.h"
+ #include "parser.h" // for midi ports
+@@ -783,6 +785,206 @@ static uae_u32 emulib_DebugDMA(uae_u32 m
+   return 1;
+ }
+ 
++/* ---- Chrome trace-event output streamed over the TCP parallel/printer port ----
++ *
++ * log_trace_event() formats a single Chrome-trace JSON event and sends it via
++ * sendprinter(). vlog_trace_event() takes its argument list either from a host
++ * va_list (slot == 0, used by the native blitter/disk instrumentation) or from
++ * the guest stack via the trap context (slot > 0, used by emulib_TraceEvent). */
++
++static void _vlog_printf(char *str, size_t size, size_t *lenp, const char *format, ...) {
++  va_list ap;
++  va_start(ap, format);
++  (*lenp) += vsnprintf(str + (*lenp), size - (*lenp), format, ap);
++  va_end(ap);
++}
++
++static bool trace_event_enabled = false;
++
++#define GETARG() (trap_get_long(ctx, trap_get_areg(ctx, 7) + (1 + (slot++)) * 4))
++#define vlog_printf(format, ...) _vlog_printf(buf, sizeof(buf), &len, format, ##__VA_ARGS__)
++
++static void vlog_trace_event(TrapContext *ctx, struct trace_event ev, va_list ap, int slot) {
++  static evt_t cycles_begin = 0;
++  static bool first_call = true;
++  static char buf[256];
++
++  if (!trace_event_enabled)
++    return;
++
++  size_t len = 0;
++  buf[0] = '\0';
++
++  if (first_call) {
++    vlog_printf("[\n");
++    cycles_begin = get_cycles();
++    first_call = false;
++  }
++
++  unsigned long clock = (currprefs.ntscmode ? CHIPSET_CLOCK_NTSC : CHIPSET_CLOCK_PAL);
++  double ts_us = (double)(get_cycles() - cycles_begin) * 1e6 / (double)(CYCLE_UNIT * clock);
++
++  vlog_printf("{\"ph\": \"%c\", \"pid\": %d, \"tid\": %d, \"ts\": %.3f", ev.type, ev.pid, ev.tid, ts_us);
++
++  if (ev.type == 'B' || ev.type == 'M' || ev.type == 'C' || ev.type == 'i') {
++    vlog_printf(", \"name\": \"%s\"", ev.name);
++  }
++  if (ev.type == 'i') {
++    vlog_printf(", \"s\": \"%c\"", ev.scope);
++  }
++
++  bool empty = true;
++  char keybuf[256], valbuf[256];
++
++  for (;;) {
++    const char *key;
++
++    if (slot) {
++      uae_u32 addr = GETARG();
++      if (addr) {
++        trap_get_string(ctx, keybuf, addr, sizeof keybuf);
++        key = keybuf;
++      } else {
++        key = NULL;
++      }
++    } else {
++      key = va_arg(ap, char *);
++    }
++
++    if (!key)
++      break;
++
++    if (empty) {
++      vlog_printf(", \"args\": {");
++      empty = false;
++    } else {
++      vlog_printf(", ");
++    }
++
++    switch (*key++) {
++      case 'S': { /* string */
++        const char *s;
++        if (slot) {
++          uae_u32 a = GETARG();
++          if (a) {
++            trap_get_string(ctx, valbuf, a, sizeof valbuf);
++            s = valbuf;
++          } else {
++            s = "";
++          }
++        } else {
++          s = va_arg(ap, char *);
++        }
++        vlog_printf("\"%s\": \"%s\"", key, s);
++        break;
++      }
++      case 'I': { /* signed int */
++        int d = slot ? (int)GETARG() : va_arg(ap, int);
++        vlog_printf("\"%s\": %d", key, d);
++        break;
++      }
++      case 'U': { /* unsigned int */
++        unsigned int d = slot ? (unsigned int)GETARG() : va_arg(ap, unsigned int);
++        vlog_printf("\"%s\": %u", key, d);
++        break;
++      }
++      case 'P': { /* amiga pointer */
++        uae_u32 ptr = slot ? GETARG() : va_arg(ap, uae_u32);
++        vlog_printf("\"%s\": \"%p\"", key, (void *)(uintptr_t)ptr);
++        break;
++      }
++    }
++  }
++
++  if (!empty) {
++    vlog_printf("}");
++  }
++
++  vlog_printf("},\n");
++  sendprinter(buf, len);
++}
++
++#undef GETARG
++
++void log_trace_event(struct trace_event ev, ...) {
++  va_list ap;
++  va_start(ap, ev);
++  vlog_trace_event(NULL, ev, ap, 0);
++  va_end(ap);
++}
++
++enum {
++  emulib_TraceEventBegin = 43,
++  emulib_TraceEventEnd = 44,
++  emulib_TraceCounter = 45,
++  emulib_TraceInstant = 46,
++  emulib_TraceMetadata = 47,
++};
++
++static uae_u32 emulib_TraceEvent(TrapContext *ctx, uae_u32 arg0, uae_u32 arg1, uae_u32 arg2, uae_u32 arg3) {
++  if (!trace_event_enabled) {
++    trace_event_enabled = true;
++
++    log_trace_event((trace_event){.type = 'M', .pid = 0, .tid = 0, .name = "process_name"},
++                    "Sname", "Hardware", NULL);
++    log_trace_event((trace_event){.type = 'M', .pid = 0, .tid = 6, .name = "thread_name"},
++                    "Sname", "Blitter", NULL);
++    log_trace_event((trace_event){.type = 'M', .pid = 0, .tid = 1, .name = "thread_name"},
++                    "Sname", "Disk", NULL);
++  }
++
++  unsigned int hi = (arg1 >> 8) + 1;
++  unsigned int lo = arg1 & 255;
++
++  trace_event ev = {
++    .pid = (int)hi,
++    .tid = (int)(hi * 100 + lo),
++  };
++
++  char namebuf[256];
++
++  switch (arg0) {
++    case emulib_TraceEventBegin: {
++      ev.type = 'B';
++      trap_get_string(ctx, namebuf, arg2, sizeof namebuf);
++      ev.name = namebuf;
++      vlog_trace_event(ctx, ev, NULL, 3);
++      break;
++    }
++    case emulib_TraceEventEnd: {
++      ev.type = 'E';
++      vlog_trace_event(ctx, ev, NULL, 2);
++      break;
++    }
++    case emulib_TraceCounter: {
++      ev.type = 'C';
++      trap_get_string(ctx, namebuf, arg2, sizeof namebuf);
++      ev.name = namebuf;
++      vlog_trace_event(ctx, ev, NULL, 3);
++      break;
++    }
++    case emulib_TraceInstant: {
++      ev.type = 'i';
++      trap_get_string(ctx, namebuf, arg2, sizeof namebuf);
++      ev.name = namebuf;
++      ev.scope = arg3;
++      vlog_trace_event(ctx, ev, NULL, 4);
++      break;
++    }
++    case emulib_TraceMetadata: {
++      ev.type = 'M';
++      trap_get_string(ctx, namebuf, arg2, sizeof namebuf);
++      ev.name = namebuf;
++      vlog_trace_event(ctx, ev, NULL, 3);
++      break;
++    }
++    default:
++      break;
++  }
++
++  return 0;
++}
++
+ static uae_u32 uaelib_demux_common(TrapContext *ctx, uae_u32 ARG0, uae_u32 ARG1, uae_u32 ARG2, uae_u32 ARG3, uae_u32 ARG4, uae_u32 ARG5)
+ {
+ 	write_log("%ld\n",ARG0);
+@@ -809,6 +1011,7 @@ static uae_u32 uaelib_demux_common(TrapC
+ 		case 40: return emulib_Log(ctx, ARG1);
+ 		case 41: return emulib_WarpMode(ARG1);
+ 		case 42: return emulib_DebugDMA(ARG1);
++		case 43 ... 47: return emulib_TraceEvent(ctx, ARG0, ARG1, ARG2, ARG3);
+ 
+ 		case 68: return emulib_Minimize();
+ 		case 69: return emulib_ExecuteNativeCode();

@@ -6,28 +6,58 @@ off the program's stdout stream and escapes SDL_Log's category prefixes, which
 would otherwise mangle raw debugger output. The Windows console paths are left
 unchanged.
 
-console_logging defaults to 1. console_debugger_available() gates on that flag,
-so with a controlling terminal the debugger always takes the stderr console
-path above and never opens the imgui/macOS debugger window.
+console_logging defaults to 1. While it is set, use_debugger_window() returns
+false unconditionally, so the debugger NEVER opens the imgui/macOS window and
+always uses the stdin/stderr console path above -- the uaedbg bridge speaks the
+console protocol over pipes, which are not TTYs but are still the right target.
+console_debugger_available()'s isatty() check (stdin+stderr, the debugger's
+actual input/output streams; deliberately NOT stdout, which carries the emulator
+log only and is routinely redirected) then governs just one thing: whether
+getconsole() puts a real terminal into line/echo mode. It no longer decides
+window vs. stdio.
 
 Index: demoscene-toolchain/submodules/amiberry/src/osdep/writelog.cpp
 ===================================================================
 --- demoscene-toolchain.orig/submodules/amiberry/src/osdep/writelog.cpp
 +++ demoscene-toolchain/submodules/amiberry/src/osdep/writelog.cpp
-@@ -49,7 +49,11 @@ static int bootlogmode;
+@@ -49,7 +49,13 @@ static int realconsole;
  static int bootlogmode;
-
+ 
  FILE* debugfile = nullptr;
 -int console_logging = 0;
 +/* Default to console logging so the debugger uses the stderr console path
 + * (see writeconsole_2 below) and never opens the imgui/macOS debugger window.
-+ * console_debugger_available() requires this flag; with a controlling
-+ * terminal it then suppresses use_debugger_window(). */
++ * console_debugger_available() requires this flag; when stdin (debugger input)
++ * and stderr (debugger output) are both TTYs it then suppresses
++ * use_debugger_window(). The gate keys off stdin+stderr, not stdout, because
++ * stdout carries the emulator log only and is routinely redirected. */
 +int console_logging = 1;
  static int debugger_type = -1;
  BOOL debuggerinitializing = false;
  extern bool lof_store;
-@@ -504,18 +504,24 @@ static void writeconsole_2 (const TCHAR
+@@ -71,7 +77,7 @@ static bool console_debugger_available()
+ #if defined(_WIN32)
+ 	return true;
+ #else
+-	return console_logging && isatty(STDIN_FILENO) && isatty(STDOUT_FILENO);
++	return console_logging && isatty(STDIN_FILENO) && isatty(STDERR_FILENO);
+ #endif
+ }
+ 
+@@ -86,6 +92,12 @@ static bool debugger_window_supported()
+ 
+ static bool use_debugger_window()
+ {
++	/* This fork drives the debugger over stdio (stdin in, stderr out) so the
++	 * uaedbg bridge can talk to it over pipes. With console logging on we never
++	 * fall back to the imgui/macOS debugger window, even when those streams are
++	 * not TTYs and an SDL video driver is present. */
++	if (console_logging)
++		return false;
+ 	return debugger_window_supported() && (!console_debugger_available() || debugger_type == 2);
+ }
+ 
+@@ -504,18 +516,24 @@ static void writeconsole_2 (const TCHAR
  #ifdef _WIN32
  		fprintf(stdout, "%s", buffer);
  #else
@@ -54,7 +84,7 @@ Index: demoscene-toolchain/submodules/amiberry/src/osdep/writelog.cpp
  #endif
  	}
  }
-@@ -542,10 +548,18 @@ static void writeconsole (const TCHAR *b
+@@ -542,10 +560,18 @@ static void writeconsole (const TCHAR *b
  static void flushconsole()
  {
  	if (consoleopen != 0) {

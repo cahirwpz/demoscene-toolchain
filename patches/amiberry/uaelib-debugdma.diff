@@ -1,0 +1,75 @@
+Add uaelib trap 42 (DebugDMA) to toggle the visual DMA debugger.
+
+emulib_DebugDMA(mode) sets the debug_dma overlay mode (0..6) from guest code
+via the new debug_dma_set_mode() helper, which mirrors the debugger`s own `v`
+command (resets the DMA record and drawing state, initialises overlay colours).
+Index: demoscene-toolchain/submodules/amiberry/src/debug.cpp
+===================================================================
+--- demoscene-toolchain.orig/submodules/amiberry/src/debug.cpp
++++ demoscene-toolchain/submodules/amiberry/src/debug.cpp
+@@ -1883,6 +1883,25 @@ static void set_debug_colors(void)
+ 	set_dbg_color(DMARECORD_BLITTER,	6, 0x00, 0xff, 0x00, 0, NULL); // line A-D
+ }
+ 
++/* Set the visual DMA debugger overlay mode (0 disables, 1..6 select a mode)
++ * from outside the debugger console; mirrors the `v` / `v o` console commands
++ * so colours are initialised and the drawing/record state is reset properly. */
++void debug_dma_set_mode(int mode)
++{
++	int ddma = debug_dma;
++	if (debug_dma) {
++		record_dma_reset(0);
++		reset_drawing();
++	}
++	if (mode) {
++		set_debug_colors();
++	}
++	debug_dma = mode;
++	if ((ddma == 2 && debug_dma != 2) || (ddma != 2 && debug_dma == 2)) {
++		reset_drawing();
++	}
++}
++
+ static int cycles_toggle;
+ 
+ int get_dma_debug_color(struct dma_rec *dr, int line, uae_u32 *cp)
+Index: demoscene-toolchain/submodules/amiberry/src/include/debug.h
+===================================================================
+--- demoscene-toolchain.orig/submodules/amiberry/src/include/debug.h
++++ demoscene-toolchain/submodules/amiberry/src/include/debug.h
+@@ -188,6 +188,7 @@ struct memwatch_node {
+ extern struct memwatch_node mwnodes[MEMWATCH_TOTAL];
+ 
+ extern void memwatch_dump2 (TCHAR *buf, int bufsize, int num);
++extern void debug_dma_set_mode (int mode);
+ 
+ void debug_getpeekdma_chipram(uaecptr addr, uae_u32 mask, int reg);
+ void debug_getpeekdma_value(uae_u32);
+Index: demoscene-toolchain/submodules/amiberry/src/uaelib.cpp
+===================================================================
+--- demoscene-toolchain.orig/submodules/amiberry/src/uaelib.cpp
++++ demoscene-toolchain/submodules/amiberry/src/uaelib.cpp
+@@ -774,6 +774,15 @@ static uae_u32 emulib_WarpMode(uae_u32 m
+   return 1;
+ }
+ 
++/* Set the visual DMA debugger overlay mode (0..6) from guest code. */
++static uae_u32 emulib_DebugDMA(uae_u32 mode)
++{
++  if (mode > 6)
++    return 0;
++  debug_dma_set_mode(mode);
++  return 1;
++}
++
+ static uae_u32 uaelib_demux_common(TrapContext *ctx, uae_u32 ARG0, uae_u32 ARG1, uae_u32 ARG2, uae_u32 ARG3, uae_u32 ARG4, uae_u32 ARG5)
+ {
+ 	write_log("%ld\n",ARG0);
+@@ -799,6 +808,7 @@ static uae_u32 uaelib_demux_common(TrapC
+ 
+ 		case 40: return emulib_Log(ctx, ARG1);
+ 		case 41: return emulib_WarpMode(ARG1);
++		case 42: return emulib_DebugDMA(ARG1);
+ 
+ 		case 68: return emulib_Minimize();
+ 		case 69: return emulib_ExecuteNativeCode();

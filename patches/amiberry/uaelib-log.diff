@@ -1,0 +1,243 @@
+Add uaelib trap 40 (Log): a printf-style logger callable from the guest.
+
+emulib_Log(fmt, ...) reads its varargs from the Amiga stack via the trap
+context and formats them with a self-contained kprintf (from NetBSD
+sys/lib/libsa) into src/uaelib_log.cpp. Also line-buffers stdout in real_main.
+Index: demoscene-toolchain/submodules/amiberry/src/main.cpp
+===================================================================
+--- demoscene-toolchain.orig/submodules/amiberry/src/main.cpp
++++ demoscene-toolchain/submodules/amiberry/src/main.cpp
+@@ -1714,6 +1714,7 @@ static int real_main2 (int argc, TCHAR *
+ 
+ void real_main (int argc, TCHAR **argv)
+ {
++	setvbuf(stdout, NULL, _IOLBF, 0);
+ 	restart_program = 1;
+ 
+ 	get_configuration_path (restart_config, sizeof restart_config / sizeof (TCHAR));
+Index: demoscene-toolchain/submodules/amiberry/src/uaelib.cpp
+===================================================================
+--- demoscene-toolchain.orig/submodules/amiberry/src/uaelib.cpp
++++ demoscene-toolchain/submodules/amiberry/src/uaelib.cpp
+@@ -764,6 +764,8 @@ static uae_u32 uaelib_midi(TrapContext *
+ 
+ #endif //AMIBERRY
+ 
++#include "uaelib_log.cpp"
++
+ static uae_u32 uaelib_demux_common(TrapContext *ctx, uae_u32 ARG0, uae_u32 ARG1, uae_u32 ARG2, uae_u32 ARG3, uae_u32 ARG4, uae_u32 ARG5)
+ {
+ 	write_log("%ld\n",ARG0);
+@@ -787,6 +789,8 @@ static uae_u32 uaelib_demux_common(TrapC
+ 		case 14: return emulib_GetDisk(ctx, ARG1, ARG2);
+ 		case 15: return emulib_Debug();
+ 
++		case 40: return emulib_Log(ctx, ARG1);
++
+ 		case 68: return emulib_Minimize();
+ 		case 69: return emulib_ExecuteNativeCode();
+ 
+Index: demoscene-toolchain/submodules/amiberry/src/uaelib_log.cpp
+===================================================================
+--- /dev/null
++++ demoscene-toolchain/submodules/amiberry/src/uaelib_log.cpp
+@@ -0,0 +1,199 @@
++/* This code is covered by BSD license.
++ * It was taken from NetBSD sys/lib/libsa/subr_prf.c
++ *
++ * Ported to amiberry: guest memory and varargs are read through the trap
++ * context (trap_get_long / trap_get_string) instead of get_real_address /
++ * m68k_areg, so it is safe under amiberry's indirect trap model. */
++
++#include <stddef.h>
++#include <stdint.h>
++#include <stdio.h>
++#include <string.h>
++#include <sys/param.h>
++
++static const char hexdigits[] = "0123456789abcdef";
++
++#define ALT 0x04
++#define SPACE 0x08
++#define LADJUST 0x10
++#define SIGN 0x20
++#define ZEROPAD 0x40
++#define NEGATIVE 0x80
++#define KPRINTN(base) kprintn(ul, base, lflag, width)
++#define RADJUSTZEROPAD()                                                       \
++  {                                                                            \
++    if ((lflag & (ZEROPAD | LADJUST)) == ZEROPAD) {                            \
++      while (width-- > 0)                                                      \
++        putchar('0');                                                          \
++    }                                                                          \
++  }
++#define LADJUSTPAD()                                                           \
++  {                                                                            \
++    if (lflag & LADJUST) {                                                     \
++      while (width-- > 0)                                                      \
++        putchar(' ');                                                          \
++    }                                                                          \
++  }
++#define RADJUSTPAD()                                                           \
++  {                                                                            \
++    if ((lflag & (ZEROPAD | LADJUST)) == 0) {                                  \
++      while (width-- > 0)                                                      \
++        putchar(' ');                                                          \
++    }                                                                          \
++  }
++
++#define KPRINT(base)                                                           \
++  {                                                                            \
++    ul = GETARG;                                                               \
++    KPRINTN(base);                                                             \
++  }
++
++static void kprintn(uint32_t ul, int base, int lflag, int width) {
++  /* hold a int32_t in base 8 */
++  char *p, buf[(sizeof(int32_t) * NBBY / 3) + 1 + 2 /* ALT + SIGN */];
++  char *q;
++
++  p = buf;
++  do {
++    *p++ = hexdigits[ul % base];
++  } while (ul /= base);
++  q = p;
++  if (lflag & ALT && *(p - 1) != '0') {
++    if (base == 8) {
++      *p++ = '0';
++    } else if (base == 16) {
++      *p++ = 'x';
++      *p++ = '0';
++    }
++  }
++  if (lflag & NEGATIVE)
++    *p++ = '-';
++  else if (lflag & SIGN)
++    *p++ = '+';
++  else if (lflag & SPACE)
++    *p++ = ' ';
++  width -= p - buf;
++  if (lflag & ZEROPAD) {
++    while (p > q)
++      putchar(*--p);
++  }
++  RADJUSTPAD();
++  RADJUSTZEROPAD();
++  do {
++    putchar(*--p);
++  } while (p > buf);
++  LADJUSTPAD();
++}
++
++#define GETARG (trap_get_long(ctx, trap_get_areg(ctx, 7) + (3 + (idx++)) * 4))
++
++static uae_u32 emulib_Log(TrapContext *ctx, uaecptr _fmt) {
++  int ch, lflag, width, idx = 0;
++  char fmtbuf[1024];
++  char sbuf[1024];
++  const char *fmt, *p, *q;
++  uint32_t ul;
++
++  trap_get_string(ctx, fmtbuf, _fmt, sizeof fmtbuf);
++  fmt = fmtbuf;
++
++  for (;;) {
++    while ((ch = *fmt++) != '%') {
++      if (ch == '\0')
++        return 0;
++      putchar(ch);
++    }
++    lflag = 0;
++    width = 0;
++  reswitch:
++    switch (ch = *fmt++) {
++      case '#':
++        lflag |= ALT;
++        goto reswitch;
++      case ' ':
++        lflag |= SPACE;
++        goto reswitch;
++      case '-':
++        lflag |= LADJUST;
++        goto reswitch;
++      case '+':
++        lflag |= SIGN;
++        goto reswitch;
++      case '0':
++        lflag |= ZEROPAD;
++        goto reswitch;
++      case '1':
++      case '2':
++      case '3':
++      case '4':
++      case '5':
++      case '6':
++      case '7':
++      case '8':
++      case '9':
++        for (;;) {
++          width *= 10;
++          width += ch - '0';
++          ch = *fmt;
++          if ((unsigned)ch - '0' > 9)
++            break;
++          ++fmt;
++        }
++      case 'l':
++      case 'j':
++      case 't':
++      case 'z':
++        goto reswitch;
++      case 'c':
++        ch = GETARG;
++        --width;
++        RADJUSTPAD();
++        putchar(ch & 0xFF);
++        LADJUSTPAD();
++        break;
++      case 's': {
++        uaecptr sptr = GETARG;
++        if (sptr)
++          trap_get_string(ctx, sbuf, sptr, sizeof sbuf);
++        else
++          strcpy(sbuf, "(null)");
++        p = sbuf;
++        for (q = p; *q != '\0'; ++q)
++          continue;
++        width -= q - p;
++        RADJUSTPAD();
++        while ((ch = (unsigned char)*p++))
++          putchar(ch);
++        LADJUSTPAD();
++        break;
++      }
++      case 'd':
++        ul = GETARG;
++        if ((int32_t)ul < 0) {
++          ul = -(int32_t)ul;
++          lflag |= NEGATIVE;
++        }
++        KPRINTN(10);
++        break;
++      case 'o':
++        KPRINT(8);
++        break;
++      case 'u':
++        KPRINT(10);
++        break;
++      case 'p':
++        lflag |= ALT;
++        /* FALLTHROUGH */
++      case 'x':
++        KPRINT(16);
++        break;
++      default:
++        if (ch == '\0')
++          return 0;
++        putchar(ch);
++        break;
++    }
++  }
++}
++
++#undef GETARG

@@ -1,15 +1,32 @@
-Send debugger console output to stderr instead of stdout.
+Route the debugger console to stderr and keep it off the GUI.
 
 On non-Windows builds the debugger console funnel (writeconsole_2 /
-flushconsole) wrote to SDL_Log/stdout. This routes it to stderr so debugger
-text is kept off the program's stdout stream, and avoids SDL_Log's category
-prefixes mangling raw debugger output. The Windows console paths are left
+flushconsole) writes to stderr instead of SDL_Log/stdout: debugger text stays
+off the program's stdout stream and escapes SDL_Log's category prefixes, which
+would otherwise mangle raw debugger output. The Windows console paths are left
 unchanged.
+
+console_logging defaults to 1. console_debugger_available() gates on that flag,
+so with a controlling terminal the debugger always takes the stderr console
+path above and never opens the imgui/macOS debugger window.
 
 Index: demoscene-toolchain/submodules/amiberry/src/osdep/writelog.cpp
 ===================================================================
 --- demoscene-toolchain.orig/submodules/amiberry/src/osdep/writelog.cpp
 +++ demoscene-toolchain/submodules/amiberry/src/osdep/writelog.cpp
+@@ -49,7 +49,11 @@ static int bootlogmode;
+ static int bootlogmode;
+
+ FILE* debugfile = nullptr;
+-int console_logging = 0;
++/* Default to console logging so the debugger uses the stderr console path
++ * (see writeconsole_2 below) and never opens the imgui/macOS debugger window.
++ * console_debugger_available() requires this flag; with a controlling
++ * terminal it then suppresses use_debugger_window(). */
++int console_logging = 1;
+ static int debugger_type = -1;
+ BOOL debuggerinitializing = false;
+ extern bool lof_store;
 @@ -504,18 +504,24 @@ static void writeconsole_2 (const TCHAR
  #ifdef _WIN32
  		fprintf(stdout, "%s", buffer);

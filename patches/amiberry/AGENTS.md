@@ -23,8 +23,6 @@ and serves GDB RSP on :8888.
    - `Memwatch <n>: break at AAAAAAAA.{B|W|L} <RWI> VVVVVVVV PC=<hex> ...`
    - `Memprotect: break at ...` [uaelib-memprotect]
    - `Memwatch <n> added`, `Breakpoint added`/`removed` [print-memwatch]
-   - "(fs-uae:" disasm-line prefix — OPEN: confirm amiberry emits a compatible
-     prefix or a patch is needed.
 4. Console commands are WinUAE's (`f`, `w`, `fi`, `fo`, `fR`, `fl`, `i`, `t`,
    `m`, `dma` ...) — keep their output shapes stable.
 

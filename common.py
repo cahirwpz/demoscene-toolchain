@@ -14,6 +14,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import time
 import requests
 import zipfile
 
@@ -216,11 +217,33 @@ def textfile(*lines):
   return name
 
 
+DOWNLOAD_TIMEOUT = (15, 60)  # (connect, read) seconds
+DOWNLOAD_RETRIES = 3
+
+
 @fill_in_args
 def download(url, name):
   info('download "%s" to "%s"', url, topdir(name))
 
-  res = requests.get(url, stream=True)
+  for attempt in range(1, DOWNLOAD_RETRIES + 1):
+    try:
+      _download_once(url, name)
+      return
+    except requests.exceptions.RequestException as ex:
+      if attempt == DOWNLOAD_RETRIES:
+        # Leave no truncated file behind: fetch() treats an existing file as
+        # "already downloaded", so a partial file would be mistaken for complete.
+        remove(name)
+        panic('download of "%s" failed after %d attempts: %s',
+              url, DOWNLOAD_RETRIES, ex)
+      delay = 2 ** attempt
+      info('download attempt %d/%d failed (%s); retrying in %ds',
+           attempt, DOWNLOAD_RETRIES, ex, delay)
+      time.sleep(delay)
+
+
+def _download_once(url, name):
+  res = requests.get(url, stream=True, timeout=DOWNLOAD_TIMEOUT)
   res.raise_for_status()
 
   try:
@@ -257,6 +280,17 @@ def download(url, name):
     print('')
 
 
+# tarfile gained the 'data' extraction filter in 3.12 (backported to 3.8.17+);
+# detect it so we can also run on the 3.11 image without a hard dependency.
+_HAVE_TAR_FILTER = hasattr(tarfile, 'data_filter')
+
+
+def _within_dir(base, target):
+  base = path.realpath(base)
+  target = path.realpath(target)
+  return target == base or target.startswith(base + os.sep)
+
+
 @fill_in_args
 def unarc(name):
   info('extract files from "%s"', topdir(name))
@@ -273,14 +307,23 @@ def unarc(name):
       with open(filename, 'wb') as f:
         f.write(arc.read(item.filename))
   elif name.endswith('.tar.gz') or name.endswith('.tar.bz2'):
+    dest = os.getcwd()
     with tarfile.open(name) as arc:
       for item in arc.getmembers():
-        debug('extract "%s"' % item.name)
-        arc.extract(item)
+        debug('extract "%s"', item.name)
+        if not _within_dir(dest, path.join(dest, item.name)):
+          panic('refusing unsafe path "%s" in archive "%s"', item.name, topdir(name))
+        if _HAVE_TAR_FILTER:
+          arc.extract(item, filter='data')
+        else:
+          arc.extract(item)
   elif name.endswith('.zip'):
+    dest = os.getcwd()
     with zipfile.ZipFile(name) as arc:
       for item in arc.infolist():
-        debug('extract "%s"' % item.filename)
+        debug('extract "%s"', item.filename)
+        if not _within_dir(dest, path.join(dest, item.filename)):
+          panic('refusing unsafe path "%s" in archive "%s"', item.filename, topdir(name))
         arc.extract(item)
   else:
     raise RuntimeError('Unrecognized archive: "%s"', name)

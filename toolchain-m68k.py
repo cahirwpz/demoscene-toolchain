@@ -73,6 +73,8 @@ from common import (  # noqa: E402
     move,
     find,
     fetch,
+    exists,
+    join,
 )
 
 
@@ -166,7 +168,7 @@ def install_fd2pragma():
     copy("{build}/fd2pragma/fd2pragma", "{prefix}/bin")
     for header in ["macros.h", "stubs.h"]:
         copy(
-            path.join("{build}/fd2pragma/Include/inline", header),
+            join("{build}/fd2pragma/Include/inline", header),
             "{prefix}/{target}/ndk/include/inline",
         )
 
@@ -204,14 +206,14 @@ def fs_uae_bootstrap():
 def cmake_configure(name, *opts, src_dir=None):
     info('configuring "%s" with cmake', name)
 
-    src = src_dir or path.join("{submodules}", name)
-    with cwd(path.join("{build}", name)):
+    src = src_dir or join("{submodules}", name)
+    with cwd(join("{build}", name)):
         execute("cmake", "-S", src, "-B", ".", "-G", "Unix Makefiles", *opts)
 
 
 def update_autotools(dst):
-    copy("{sources}/{automake}/lib/config.guess", path.join(dst, "config.guess"))
-    copy("{sources}/{automake}/lib/config.sub", path.join(dst, "config.sub"))
+    copy("{sources}/{automake}/lib/config.guess", join(dst, "config.guess"))
+    copy("{sources}/{automake}/lib/config.sub", join(dst, "config.sub"))
 
 
 def touch_genfiles(dst):
@@ -280,9 +282,7 @@ def build():
 
     environ["CC"] = CC
     environ["CXX"] = CXX
-    environ["PATH"] = ":".join(
-        [path.join("{prefix}", "bin"), path.join("{host}", "bin"), PATH]
-    )
+    environ["PATH"] = ":".join([join("{prefix}", "bin"), join("{host}", "bin"), PATH])
 
     setvar(cc=environ["CC"], cxx=environ["CXX"])
 
@@ -695,15 +695,15 @@ if __name__ == "__main__":
         lzsa="lzsa-1.4.1",
         target="m68k-amigaos",
         python=sys.executable,
-        patches=path.join("{top}", "patches"),
-        stamps=path.join("{top}", ".build-m68k", "stamps"),
-        build=path.join("{top}", ".build-m68k", "build"),
-        sources=path.join("{top}", ".build-m68k", "sources"),
-        host=path.join("{top}", ".build-m68k", "host"),
-        tmpdir=path.join("{top}", ".build-m68k", "tmp"),
-        prefix=path.join("{top}", "m68k-amigaos"),
-        archives=path.join("{top}", ".build-m68k", "archives"),
-        submodules=path.join("{top}", "submodules"),
+        patches=join("{top}", "patches"),
+        stamps=join("{top}", ".build-m68k", "stamps"),
+        build=join("{top}", ".build-m68k", "build"),
+        sources=join("{top}", ".build-m68k", "sources"),
+        host=join("{top}", ".build-m68k", "host"),
+        tmpdir=join("{top}", ".build-m68k", "tmp"),
+        prefix=join("{top}", "m68k-amigaos"),
+        archives=join("{top}", ".build-m68k", "archives"),
+        submodules=join("{top}", "submodules"),
     )
 
     if args.quiet:
@@ -712,7 +712,7 @@ if __name__ == "__main__":
     if args.prefix is not None:
         setvar(prefix=args.prefix)
 
-    if not path.exists("{prefix}"):
+    if not exists("{prefix}"):
         mkdir("{prefix}")
 
     action = args.action.replace("-", "_")

@@ -53,10 +53,13 @@ def flatten(*args):
       yield item
 
 
+# Template-expanding wrappers around os.path helpers. We bind new names instead
+# of patching os.path, so the stdlib module is left untouched for every other
+# importer in the process.
 chdir = fill_in_args(os.chdir)
-path.exists = fill_in_args(path.exists)
-path.join = fill_in_args(path.join)
-path.relpath = fill_in_args(path.relpath)
+exists = fill_in_args(path.exists)
+join = fill_in_args(path.join)
+relpath = fill_in_args(path.relpath)
 
 
 @fill_in_args
@@ -69,7 +72,7 @@ def panic(*args):
 def topdir(name):
   if not path.isabs(name):
     name = path.abspath(name)
-  return path.relpath(name, '{top}')
+  return relpath(name, '{top}')
 
 
 @fill_in_args
@@ -81,7 +84,7 @@ def find_executable(name):
 @fill_in_args
 def require_packages(*packages):
   """On Debian-based systems, verify required dev packages are installed."""
-  if not path.exists('/etc/debian_version'):
+  if not exists('/etc/debian_version'):
     return
   res = subprocess.run(['dpkg-query', '-W', '-f=${Package} ${Status}\n'] + list(packages),
                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -100,7 +103,7 @@ def find(root, **kwargs):
   exclude = kwargs.get('exclude', [''])
   lst = []
   for name in sorted(os.listdir(root)):
-    fullname = path.join(root, name)
+    fullname = join(root, name)
     is_dir = path.isdir(fullname)
     excluded = any(fnmatch(name, pat) for pat in exclude)
     included = any(fnmatch(name, pat) for pat in include)
@@ -169,7 +172,7 @@ def copytree(src, dst, **kwargs):
   mkdir(dst)
 
   for name in find(src, **kwargs):
-    target = path.join(dst, path.relpath(name, src))
+    target = join(dst, relpath(name, src))
     if path.isdir(name):
       mkdir(target)
     else:
@@ -311,7 +314,7 @@ def unarc(name):
     with tarfile.open(name) as arc:
       for item in arc.getmembers():
         debug('extract "%s"', item.name)
-        if not _within_dir(dest, path.join(dest, item.name)):
+        if not _within_dir(dest, join(dest, item.name)):
           panic('refusing unsafe path "%s" in archive "%s"', item.name, topdir(name))
         if _HAVE_TAR_FILTER:
           arc.extract(item, filter='data')
@@ -322,7 +325,7 @@ def unarc(name):
     with zipfile.ZipFile(name) as arc:
       for item in arc.infolist():
         debug('extract "%s"', item.filename)
-        if not _within_dir(dest, path.join(dest, item.filename)):
+        if not _within_dir(dest, join(dest, item.filename)):
           panic('refusing unsafe path "%s" in archive "%s"', item.filename, topdir(name))
         arc.extract(item)
   else:
@@ -332,7 +335,7 @@ def unarc(name):
 @contextlib.contextmanager
 def cwd(name):
   old = os.getcwd()
-  if not path.exists(name):
+  if not exists(name):
     mkdir(name)
   try:
     debug('enter directory "%s"', topdir(name))
@@ -373,10 +376,10 @@ def recipe(name, nargs=0):
         target = fill_in(name)
       target = target.replace('_', '-')
       target = target.replace('/', '-')
-      stamp = path.join('{stamps}', target)
-      if not path.exists('{stamps}'):
+      stamp = join('{stamps}', target)
+      if not exists('{stamps}'):
         mkdir('{stamps}')
-      if not path.exists(stamp):
+      if not exists(stamp):
         fn(*args, **kwargs)
         touch(stamp)
       else:
@@ -388,20 +391,20 @@ def recipe(name, nargs=0):
 @recipe('fetch', 1)
 def fetch(name, url):
   if url.startswith('http') or url.startswith('ftp'):
-    if not path.exists(name):
+    if not exists(name):
       download(url, name)
     else:
       info('File "%s" already downloaded.', name)
   elif url.startswith('svn'):
     execute('svn', 'export', url, name)
   elif url.startswith('git'):
-    if not path.exists(name):
+    if not exists(name):
       execute('git', 'clone', url, name)
     else:
       with cwd(name):
         execute('git', 'pull')
   elif url.startswith('file'):
-    if not path.exists(name):
+    if not exists(name):
       _, src = url.split('://')
       copy(src, name)
   else:
@@ -411,37 +414,37 @@ def fetch(name, url):
 @recipe('unpack', 1)
 def unpack(name, work_dir='{sources}', top_dir=None, dst_dir=None):
   try:
-    src = (glob(path.join('{archives}', name) + '*') +
-           glob(path.join('{submodules}', name) + '*'))[0]
+    src = (glob(join('{archives}', name) + '*') +
+           glob(join('{submodules}', name) + '*'))[0]
   except IndexError:
     src = ""
     panic('Missing files for "%s".', name)
 
-  dst = path.join(work_dir, dst_dir or name)
+  dst = join(work_dir, dst_dir or name)
 
   info('preparing files for "%s"', name)
 
   if path.isdir(src):
     if top_dir is not None:
-      src = path.join(src, top_dir)
+      src = join(src, top_dir)
     copytree(src, dst, exclude=['.svn', '.git'])
   else:
     tmpdir = mkdtemp(dir='{tmpdir}')
     with cwd(tmpdir):
       unarc(src)
-    copytree(path.join(tmpdir, top_dir or name), dst)
+    copytree(join(tmpdir, top_dir or name), dst)
     rmtree(tmpdir)
 
 
 @recipe('patch', 1)
 def patch(name, work_dir='{sources}'):
   with cwd(work_dir):
-    for name in find(path.join('{patches}', name),
+    for name in find(join('{patches}', name),
                      only_files=True, exclude=['*~']):
       if fnmatch(name, '*.diff'):
         execute('patch', '-t', '-p0', '-i', name)
       else:
-        dst = path.relpath(name, '{patches}')
+        dst = relpath(name, '{patches}')
         mkdir(path.dirname(dst))
         copy(name, dst)
 
@@ -453,23 +456,23 @@ def configure(name, *confopts, **kwargs):
   if 'from_dir' in kwargs:
     from_dir = kwargs['from_dir']
   else:
-    from_dir = path.join('{sources}', name)
+    from_dir = join('{sources}', name)
 
   if kwargs.get('copy_source', False):
-    rmtree(path.join('{build}', name))
-    copytree(path.join('{sources}', name), path.join('{build}', name))
+    rmtree(join('{build}', name))
+    copytree(join('{sources}', name), join('{build}', name))
     from_dir = '.'
 
-  with cwd(path.join('{build}', name)):
+  with cwd(join('{build}', name)):
     remove(find('.', include=['config.cache']))
-    execute(path.join(from_dir, 'configure'), *confopts)
+    execute(join(from_dir, 'configure'), *confopts)
 
 
 @recipe('make', 2)
 def make(name, target=None, makefile=None, parallel=False, **makevars):
   info('running make "%s"', target)
 
-  with cwd(path.join('{build}', name)):
+  with cwd(join('{build}', name)):
     args = ['%s=%s' % item for item in makevars.items()]
     if target is not None:
       args = [target] + args
@@ -507,4 +510,4 @@ __all__ = ['setvar', 'panic', 'find_executable', 'chmod', 'execute', 'rmtree',
            'mkdir', 'copy', 'copytree', 'fetch', 'cwd', 'symlink', 'remove',
            'move', 'find', 'textfile', 'env', 'path', 'recipe', 'unpack',
            'patch', 'configure', 'make', 'require_header', 'require_packages',
-           'touch']
+           'touch', 'exists', 'join', 'relpath']

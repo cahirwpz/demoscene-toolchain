@@ -642,8 +642,8 @@ if __name__ == "__main__":
     if "VIRTUAL_ENV" not in environ:
         panic('Please run "source activate" before executing this script.')
 
-    if not sys.version_info[:2] >= (3, 5):
-        panic("I need Python 3.5 to run!")
+    if not sys.version_info[:2] >= (3, 11):
+        panic("I need Python 3.11 to run!")
 
     if not any(
         fnmatch(platform.system(), pat)

@@ -1,0 +1,25 @@
+Break into the debugger on an ILLEGAL instruction executed outside ROM.
+
+In op_illg(), opcode 0x4AFC (ILLEGAL) with inrom == 0 steps past the
+instruction and calls activate_debugger(), letting guest code trigger a
+debugger break by planting an ILLEGAL opcode.
+
+Index: demoscene-toolchain/submodules/amiberry/src/newcpu.cpp
+===================================================================
+--- demoscene-toolchain.orig/submodules/amiberry/src/newcpu.cpp
++++ demoscene-toolchain/submodules/amiberry/src/newcpu.cpp
+@@ -3885,6 +3885,14 @@ uae_u32 REGPARAM2 op_illg (uae_u32 opcod
+ 		}
+ 	}
+ 
++	/* Break into debugger on ILLEGAL instruction placed outside of ROM. */
++	if (opcode == 0x4AFC && !inrom) {
++		m68k_incpc_normal (2);
++		fill_prefetch ();
++		activate_debugger ();
++		return 4;
++	}
++
+ #ifdef AUTOCONFIG
+ 	if (opcode == 0xFF0D && inrt) {
+ 		/* User-mode STOP replacement */

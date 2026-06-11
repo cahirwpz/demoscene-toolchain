@@ -1,0 +1,36 @@
+Make Amiberry break into the debugger at startup when use_debugger is set.
+
+real_main2() calls activate_debugger() only if currprefs.start_debugger &&
+debuggable(). Amiberry left debuggable() undefined and the call commented
+out. This defines debuggable() to return 1 and enables the activation, so
+with use_debugger=yes (cfgfile already maps it to start_debugger) the guest
+stops in the debugger at boot.
+
+Index: demoscene-toolchain/submodules/amiberry/src/main.cpp
+===================================================================
+--- demoscene-toolchain.orig/submodules/amiberry/src/main.cpp
++++ demoscene-toolchain/submodules/amiberry/src/main.cpp
+@@ -1600,6 +1600,12 @@ void setup_brkhandler (void)
+ #endif
+ }
+ 
++/* WinUAE stubs this to 0; Amiberry can host the debugger, so allow it. */
++int debuggable (void)
++{
++	return 1;
++}
++
+ static int real_main2 (int argc, TCHAR **argv)
+ {
+ 	set_config_changed();
+@@ -1725,8 +1731,8 @@ static int real_main2 (int argc, TCHAR *
+ 	if (graphics_init (true)) {
+ #ifdef DEBUGGER
+ 		setup_brkhandler ();
+-//		if (currprefs.start_debugger && debuggable ())
+-//			activate_debugger ();
++		if (currprefs.start_debugger && debuggable ())
++			activate_debugger ();
+ #endif
+ 		if (!init_audio ()) {
+ 			if (sound_available && currprefs.produce_sound > 1) {

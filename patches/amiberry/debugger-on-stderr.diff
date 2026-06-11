@@ -1,0 +1,58 @@
+Send debugger console output to stderr instead of stdout.
+
+On non-Windows builds the debugger console funnel (writeconsole_2 /
+flushconsole) wrote to SDL_Log/stdout. This routes it to stderr so debugger
+text is kept off the program's stdout stream, and avoids SDL_Log's category
+prefixes mangling raw debugger output. The Windows console paths are left
+unchanged.
+
+Index: demoscene-toolchain/submodules/amiberry/src/osdep/writelog.cpp
+===================================================================
+--- demoscene-toolchain.orig/submodules/amiberry/src/osdep/writelog.cpp
++++ demoscene-toolchain/submodules/amiberry/src/osdep/writelog.cpp
+@@ -504,18 +504,24 @@ static void writeconsole_2 (const TCHAR
+ #ifdef _WIN32
+ 		fprintf(stdout, "%s", buffer);
+ #else
+-		SDL_Log("%s", buffer);
++		/* Keep the debugger console off stdout. */
++		fprintf(stderr, "%s", buffer);
+ #endif
+ 	}
+ 	else if (realconsole) {
++#ifdef _WIN32
+ 		fprintf(stdout, "%s", buffer);
+ 		fflush(stdout);
++#else
++		fprintf(stderr, "%s", buffer);
++		fflush(stderr);
++#endif
+ 	}
+ 	else if (consoleopen < 0) {
+ #ifdef _WIN32
+ 		fprintf(stdout, "%s", buffer);
+ #else
+-		SDL_Log("%s", buffer);
++		fprintf(stderr, "%s", buffer);
+ #endif
+ 	}
+ }
+@@ -542,10 +548,18 @@ static void writeconsole (const TCHAR *b
+ static void flushconsole()
+ {
+ 	if (consoleopen != 0) {
++#ifdef _WIN32
+ 		fflush(stdout);
++#else
++		fflush(stderr);
++#endif
+ 	}
+ 	else if (realconsole) {
++#ifdef _WIN32
+ 		fflush(stdout);
++#else
++		fflush(stderr);
++#endif
+ 	}
+ }
+ 

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3 -B
+#!/usr/bin/env python3
 # fmt: off
 
 from fnmatch import fnmatch
@@ -26,7 +26,7 @@ def setvar(**kwargs):
 
 
 def fill_in(value):
-  if type(value) is str:
+  if isinstance(value, str):
     return value.format(**VARS)
   return value
 
@@ -44,9 +44,9 @@ def flatten(*args):
 
   while queue:
     item = queue.pop(0)
-    if type(item) is list:
+    if isinstance(item, list):
       queue = item + queue
-    elif type(item) is tuple:
+    elif isinstance(item, tuple):
       queue = list(item) + queue
     else:
       yield item

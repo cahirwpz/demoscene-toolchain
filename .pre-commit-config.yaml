@@ -1,0 +1,45 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+
+exclude: \.(diff|patch)$
+
+repos:
+  # --- COMMON/GENERAL HOOKS ---
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace      # Remove unnecessary whitespaces
+      - id: end-of-file-fixer        # Ensure files end with a newline
+      - id: check-yaml               # Validate YAML syntax
+      - id: check-added-large-files  # Prevent bumping the repo size with huge files
+      - id: check-merge-conflict     # Check for unresolved merge conflicts
+      - id: check-json               # Validate JSON syntax (demo.json files are parsed by the build system)
+      - id: check-symlinks           # Detect broken symlinks (demo dirs are symlinked from effects/)
+
+  # --- BASH (Shell Scripts) ---
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.11.0.1
+    hooks:
+      - id: shellcheck               # Static analysis for shell scripts (great for your GH Actions logic)
+
+  # --- PYTHON (Ruff) ---
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.9
+    hooks:
+      - id: ruff                     # Fast Python linter & import sorter
+        args: [ --fix ]
+      - id: ruff-format              # Fast Python formatter (Black-compatible)
+
+  # --- MARKDOWN & DOCS ---
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v4.0.0-alpha.8
+    hooks:
+      - id: prettier                 # Format Markdown, JSON, and CSS
+        types: [markdown]
+        args: [ --prose-wrap, always, --print-width, "80" ]
+
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.48.0
+    hooks:
+      - id: markdownlint             # Linter for Markdown style and consistency
+        args: [ --fix ]

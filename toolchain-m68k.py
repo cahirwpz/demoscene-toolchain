@@ -2,6 +2,7 @@
 
 # Build cross toolchain for AmigaOS <= 3.9 / M68k target.
 
+from collections import namedtuple
 from fnmatch import fnmatch
 from glob import glob
 from logging import info, getLogger
@@ -11,41 +12,135 @@ import logging
 import platform
 import sys
 
-URLS = [
-    "https://ftp.gnu.org/gnu/m4/m4-1.4.17.tar.gz",
-    "https://ftp.gnu.org/gnu/gawk/gawk-3.1.8.tar.gz",
-    "https://ftp.gnu.org/gnu/autoconf/autoconf-2.13.tar.gz",
-    "https://ftp.gnu.org/gnu/bison/bison-1.35.tar.gz",
-    "https://ftp.gnu.org/gnu/texinfo/texinfo-4.12.tar.gz",
-    "https://ftp.gnu.org/gnu/automake/automake-1.15.tar.gz",
-    "https://gcc.gnu.org/pub/gcc/infrastructure/gmp-6.2.1.tar.bz2",
-    "https://gcc.gnu.org/pub/gcc/infrastructure/mpfr-3.1.6.tar.bz2",
-    "https://gcc.gnu.org/pub/gcc/infrastructure/mpc-1.0.3.tar.gz",
-    "https://gcc.gnu.org/pub/gcc/infrastructure/isl-0.18.tar.bz2",
-    (
-        "https://github.com/askeksa/Shrinkler/archive/refs/tags/v4.7.tar.gz",
-        "Shrinkler-4.7.tar.gz",
+# Single source of truth for downloaded packages. The version is written once
+# per row; both the download list and the {key} template variables consumed by
+# setvar() are derived from this table. The name/url/archive fields are format
+# strings that may reference {version} (and {name}); archive defaults to the URL
+# basename. Rows with key=None are downloaded but not exposed as a variable.
+Package = namedtuple("Package", "key version name url archive", defaults=[None])
+
+PACKAGES = [
+    Package("m4", "1.4.17", "m4-{version}", "https://ftp.gnu.org/gnu/m4/{name}.tar.gz"),
+    Package(
+        "gawk", "3.1.8", "gawk-{version}", "https://ftp.gnu.org/gnu/gawk/{name}.tar.gz"
     ),
-    (
-        "https://github.com/emmanuel-marty/salvador/archive/refs/tags/1.4.2.tar.gz",
-        "salvador-1.4.2.tar.gz",
+    Package(
+        "autoconf",
+        "2.13",
+        "autoconf-{version}",
+        "https://ftp.gnu.org/gnu/autoconf/{name}.tar.gz",
     ),
-    (
-        "https://github.com/emmanuel-marty/lzsa/archive/refs/tags/1.4.1.tar.gz",
-        "lzsa-1.4.1.tar.gz",
+    Package(
+        "bison",
+        "1.35",
+        "bison-{version}",
+        "https://ftp.gnu.org/gnu/bison/{name}.tar.gz",
     ),
-    (
-        "https://github.com/libsdl-org/SDL/archive/refs/tags/release-3.4.10.tar.gz",
-        "SDL-3.4.10.tar.gz",
+    Package(
+        "texinfo",
+        "4.12",
+        "texinfo-{version}",
+        "https://ftp.gnu.org/gnu/texinfo/{name}.tar.gz",
     ),
-    (
-        "https://github.com/libsdl-org/SDL_image/archive/refs/tags/release-3.4.4.tar.gz",
-        "SDL_image-3.4.4.tar.gz",
+    Package(
+        "automake",
+        "1.15",
+        "automake-{version}",
+        "https://ftp.gnu.org/gnu/automake/{name}.tar.gz",
     ),
-    "https://ftp.gnu.org/old-gnu/gnu-0.2/src/flex-2.5.4.tar.gz",
-    ("http://hp.alinea-computer.de/AmigaOS/NDK39.lha", "NDK_3.9.lha"),
-    ("http://phoenix.owl.de/tags/vasm1_9c.tar.gz", "vasm.tar.gz"),
+    Package(
+        "gmp",
+        "6.2.1",
+        "gmp-{version}",
+        "https://gcc.gnu.org/pub/gcc/infrastructure/{name}.tar.bz2",
+    ),
+    Package(
+        "mpfr",
+        "3.1.6",
+        "mpfr-{version}",
+        "https://gcc.gnu.org/pub/gcc/infrastructure/{name}.tar.bz2",
+    ),
+    Package(
+        "mpc",
+        "1.0.3",
+        "mpc-{version}",
+        "https://gcc.gnu.org/pub/gcc/infrastructure/{name}.tar.gz",
+    ),
+    Package(
+        "isl",
+        "0.18",
+        "isl-{version}",
+        "https://gcc.gnu.org/pub/gcc/infrastructure/{name}.tar.bz2",
+    ),
+    Package(
+        "shrinkler",
+        "4.7",
+        "Shrinkler-{version}",
+        "https://github.com/askeksa/Shrinkler/archive/refs/tags/v{version}.tar.gz",
+        "{name}.tar.gz",
+    ),
+    Package(
+        "salvador",
+        "1.4.2",
+        "salvador-{version}",
+        "https://github.com/emmanuel-marty/salvador/archive/refs/tags/{version}.tar.gz",
+        "{name}.tar.gz",
+    ),
+    Package(
+        "lzsa",
+        "1.4.1",
+        "lzsa-{version}",
+        "https://github.com/emmanuel-marty/lzsa/archive/refs/tags/{version}.tar.gz",
+        "{name}.tar.gz",
+    ),
+    Package(
+        "sdl",
+        "3.4.10",
+        "SDL-{version}",
+        "https://github.com/libsdl-org/SDL/archive/refs/tags/release-{version}.tar.gz",
+        "{name}.tar.gz",
+    ),
+    Package(
+        "sdl_image",
+        "3.4.4",
+        "SDL_image-{version}",
+        "https://github.com/libsdl-org/SDL_image/archive/refs/tags/release-{version}.tar.gz",
+        "{name}.tar.gz",
+    ),
+    Package(
+        "flex",
+        "2.5.4",
+        "flex-{version}",
+        "https://ftp.gnu.org/old-gnu/gnu-0.2/src/{name}.tar.gz",
+    ),
+    # alinea-computer serves the NDK as "NDK39.lha"; we store it under {name}.
+    Package(
+        "NDK",
+        "3.9",
+        "NDK_{version}",
+        "http://hp.alinea-computer.de/AmigaOS/NDK39.lha",
+        "{name}.lha",
+    ),
+    Package(
+        None,
+        "1_9c",
+        "vasm",
+        "http://phoenix.owl.de/tags/vasm{version}.tar.gz",
+        "vasm.tar.gz",
+    ),
 ]
+
+
+def resolve_package(pkg):
+    name = pkg.name.format(version=pkg.version)
+    url = pkg.url.format(version=pkg.version, name=name)
+    archive = (pkg.archive or url.rsplit("/", 1)[-1]).format(
+        version=pkg.version, name=name
+    )
+    return name, url, archive
+
+
+PACKAGE_VARS = {pkg.key: resolve_package(pkg)[0] for pkg in PACKAGES if pkg.key}
 
 
 from common import (  # noqa: E402
@@ -232,12 +327,9 @@ def touch_genfiles(dst):
 
 def download():
     with cwd("{archives}"):
-        for url in URLS:
-            if isinstance(url, tuple):
-                url, name = url[0], url[1]
-            else:
-                name = path.basename(url)
-            fetch(name, url)
+        for pkg in PACKAGES:
+            _, url, archive = resolve_package(pkg)
+            fetch(archive, url)
 
     execute("git", "submodule", "init")
     execute("git", "submodule", "update")
@@ -671,28 +763,12 @@ if __name__ == "__main__":
     setvar(top=path.abspath(path.dirname(sys.argv[0])))
 
     setvar(
-        m4="m4-1.4.17",
-        gawk="gawk-3.1.8",
-        flex="flex-2.5.4",
-        bison="bison-1.35",
-        automake="automake-1.15",
-        autoconf="autoconf-2.13",
-        texinfo="texinfo-4.12",
-        gmp="gmp-6.2.1",
-        mpfr="mpfr-3.1.6",
-        mpc="mpc-1.0.3",
-        isl="isl-0.18",
-        NDK="NDK_3.9",
+        **PACKAGE_VARS,
         binutils="binutils-gdb",
         fsuae="fs-uae",
         amiberry="amiberry",
-        sdl="SDL-3.4.10",
-        sdl_image="SDL_image-3.4.4",
         gcc="gcc-2.95.3",
         gcc_bebbo="gcc-bebbo",
-        shrinkler="Shrinkler-4.7",
-        salvador="salvador-1.4.2",
-        lzsa="lzsa-1.4.1",
         target="m68k-amigaos",
         python=sys.executable,
         patches=join("{top}", "patches"),

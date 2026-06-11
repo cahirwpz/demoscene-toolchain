@@ -1,9 +1,11 @@
 #!/usr/bin/env python3 -B
+# fmt: off
 
 from fnmatch import fnmatch
 from glob import glob
 from logging import debug, info, error
 from os import path
+from pathlib import Path
 import contextlib
 import os
 from multiprocessing import cpu_count
@@ -96,10 +98,7 @@ def find(root, **kwargs):
 
 @fill_in_args
 def touch(name):
-  try:
-    os.utime(name, None)
-  except OSError:
-    open(name, 'a').close()
+  Path(name).touch(exist_ok=True)
 
 
 @fill_in_args
@@ -119,25 +118,26 @@ def mkstemp(**kwargs):
 @fill_in_args
 def rmtree(*names):
   for name in flatten(names):
-    if path.isdir(name):
+    p = Path(name)
+    if p.is_dir():
       debug('rmtree "%s"', topdir(name))
-      shutil.rmtree(name)
+      shutil.rmtree(p)
 
 
 @fill_in_args
 def remove(*names):
   for name in flatten(names):
-    if path.isfile(name):
+    p = Path(name)
+    if p.is_file():
       debug('remove "%s"', topdir(name))
-      os.remove(name)
+      p.unlink()
 
 
 @fill_in_args
 def mkdir(*names):
   for name in flatten(names):
-    if name and not path.isdir(name):
-      debug('makedir "%s"', topdir(name))
-      os.makedirs(name)
+    if name:
+      Path(name).mkdir(parents=True, exist_ok=True)
 
 
 @fill_in_args
@@ -168,9 +168,10 @@ def move(src, dst):
 
 @fill_in_args
 def symlink(src, name):
-  if not path.islink(name):
+  p = Path(name)
+  if not p.is_symlink():
     debug('symlink "%s" points at "%s"', topdir(name), src)
-    os.symlink(src, name)
+    p.symlink_to(src)
 
 
 @fill_in_args
@@ -184,7 +185,7 @@ def execute(*cmd, **kwargs):
   debug('execute "%s"', " ".join(cmd))
   ignore_errors = kwargs.get('ignore_errors', False)
   try:
-    subprocess.check_call(cmd)
+    subprocess.run(cmd, check=True)
   except subprocess.CalledProcessError as ex:
     if not ignore_errors:
       panic('command "%s" failed with %d',
@@ -217,22 +218,28 @@ def download(url, name):
   else:
     info('download: %s', name)
 
+  is_tty = sys.stdout.isatty()
   with open(name, 'wb') as f:
     done = 0
+    last_reported = 0
     for chunk in res.iter_content(chunk_size=8192):
       if not chunk:
         continue
       done += len(chunk)
       f.write(chunk)
-      if size:
-        status = r"%d [%3.2f%%]" % (done, done * 100. / size)
-      else:
-        status = r"%d" % done
-      status = status + chr(8) * (len(status) + 1)
-      sys.stdout.write(status)
-      sys.stdout.flush()
+      if is_tty:
+        status = f'\r{done} [{done * 100. / size:.2f}%]' if size else f'\r{done} bytes'
+        sys.stdout.write(status)
+        sys.stdout.flush()
+      elif done - last_reported >= 5 * 1024 * 1024 or (size and done == size):
+        if size:
+          info('downloading %s: %3.2f%% (%d/%d bytes)', name, done * 100. / size, done, size)
+        else:
+          info('downloading %s: %d bytes', name, done)
+        last_reported = done
 
-  print("")
+  if is_tty:
+    print('')
 
 
 @fill_in_args
@@ -422,11 +429,6 @@ def require_header(headers, lang='c', errmsg='', symbol=None, value=None):
     cmd = {'c': os.environ['CC'], 'c++': os.environ['CXX']}[lang]
     cmd = fill_in(cmd).split()
     opts = ['-fsyntax-only', '-x', lang, '-']
-    proc = subprocess.Popen(cmd + opts,
-                            stdin=subprocess.PIPE,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE)
-
     proc_stdin = ['#include <%s>' % header]
     if symbol:
       if value:
@@ -436,10 +438,8 @@ def require_header(headers, lang='c', errmsg='', symbol=None, value=None):
         proc_stdin.append("#error")
         proc_stdin.append("#endif")
 
-    _, _ = proc.communicate('\n'.join(proc_stdin).encode())
-    proc.wait()
-
-    if proc.returncode == 0:
+    res = subprocess.run(cmd + opts, input='\n'.join(proc_stdin), text=True, capture_output=True)
+    if res.returncode == 0:
       return
 
   panic(errmsg)

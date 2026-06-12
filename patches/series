@@ -32,3 +32,4 @@ amiberry/uaelib-debugdma.diff
 amiberry/uaelib-trace.diff
 amiberry/uaelib-memprotect.diff
 amiberry/disable-mouse-grab.diff
+amiberry/remap-keys.diff

@@ -19,3 +19,17 @@ fs-uae/serial-reliable-rx.diff
 fs-uae/uaelib-debugdma.diff
 fs-uae/uaelib-trace.diff
 fs-uae/uaelib-memprotect.diff
+amiberry/break-on-illegal.diff
+amiberry/break-on-sigint.diff
+amiberry/break-at-start.diff
+amiberry/debugger-on-stderr.diff
+amiberry/exceptions-on-stderr.diff
+amiberry/print-memwatch.diff
+amiberry/uaelib-log.diff
+amiberry/debug-msg-fix.diff
+amiberry/uaelib-warpmode.diff
+amiberry/uaelib-debugdma.diff
+amiberry/uaelib-trace.diff
+amiberry/uaelib-memprotect.diff
+amiberry/disable-mouse-grab.diff
+amiberry/remap-keys.diff

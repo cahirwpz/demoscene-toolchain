@@ -1,54 +1,58 @@
 Add uaelib trap 40 (Log): a printf-style logger callable from the guest.
 
-emulib_Log(fmt, ...) reads its varargs from the Amiga stack and formats
-them with a self-contained kprintf (taken from NetBSD sys/lib/libsa) into
-a new file src/uaelib_log.cpp. Also line-buffers stdout in amiga_init().
-
-Index: demoscene-toolchain/submodules/fs-uae/src/od-fs/libamiga.cpp
+emulib_Log(fmt, ...) reads its varargs from the Amiga stack via the trap
+context and formats them with a self-contained kprintf (from NetBSD
+sys/lib/libsa) into src/uaelib_log.cpp. Also line-buffers stdout in real_main.
+Index: demoscene-toolchain/submodules/amiberry/src/main.cpp
 ===================================================================
---- demoscene-toolchain.orig/submodules/fs-uae/src/od-fs/libamiga.cpp
-+++ demoscene-toolchain/submodules/fs-uae/src/od-fs/libamiga.cpp
-@@ -146,6 +146,7 @@ void amiga_floppy_set_writable_images(in
+--- demoscene-toolchain.orig/submodules/amiberry/src/main.cpp
++++ demoscene-toolchain/submodules/amiberry/src/main.cpp
+@@ -1714,6 +1714,7 @@ static int real_main2 (int argc, TCHAR *
  
- int amiga_init(void)
+ void real_main (int argc, TCHAR **argv)
  {
-+    setvbuf(stdout, NULL, _IOLBF, 0);
-     uae_log("Initializing core derived from %s\n", UAE_BASE_VERSION);
++	setvbuf(stdout, NULL, _IOLBF, 0);
+ 	restart_program = 1;
  
- #if 0
-Index: demoscene-toolchain/submodules/fs-uae/src/uaelib.cpp
+ 	get_configuration_path (restart_config, sizeof restart_config / sizeof (TCHAR));
+Index: demoscene-toolchain/submodules/amiberry/src/uaelib.cpp
 ===================================================================
---- demoscene-toolchain.orig/submodules/fs-uae/src/uaelib.cpp
-+++ demoscene-toolchain/submodules/fs-uae/src/uaelib.cpp
-@@ -349,6 +349,8 @@ static int native_dos_op(TrapContext *ct
- 	return 0;
- }
+--- demoscene-toolchain.orig/submodules/amiberry/src/uaelib.cpp
++++ demoscene-toolchain/submodules/amiberry/src/uaelib.cpp
+@@ -764,6 +764,8 @@ static uae_u32 uaelib_midi(TrapContext *
+ 
+ #endif //AMIBERRY
  
 +#include "uaelib_log.cpp"
 +
  static uae_u32 uaelib_demux_common(TrapContext *ctx, uae_u32 ARG0, uae_u32 ARG1, uae_u32 ARG2, uae_u32 ARG3, uae_u32 ARG4, uae_u32 ARG5)
  {
- 	switch (ARG0) {
-@@ -370,6 +372,8 @@ static uae_u32 uaelib_demux_common(TrapC
+ 	write_log("%ld\n",ARG0);
+@@ -787,6 +789,8 @@ static uae_u32 uaelib_demux_common(TrapC
  		case 14: return emulib_GetDisk(ctx, ARG1, ARG2);
  		case 15: return emulib_Debug();
  
-+ 		case 40: return emulib_Log(ARG1);
++		case 40: return emulib_Log(ctx, ARG1);
 +
  		case 68: return emulib_Minimize();
  		case 69: return emulib_ExecuteNativeCode();
  
-Index: demoscene-toolchain/submodules/fs-uae/src/uaelib_log.cpp
+Index: demoscene-toolchain/submodules/amiberry/src/uaelib_log.cpp
 ===================================================================
 --- /dev/null
-+++ demoscene-toolchain/submodules/fs-uae/src/uaelib_log.cpp
-@@ -0,0 +1,184 @@
++++ demoscene-toolchain/submodules/amiberry/src/uaelib_log.cpp
+@@ -0,0 +1,199 @@
 +/* This code is covered by BSD license.
-+ * It was taken from NetBSD sys/lib/libsa/subr_prf.c */
++ * It was taken from NetBSD sys/lib/libsa/subr_prf.c
++ *
++ * Ported to amiberry: guest memory and varargs are read through the trap
++ * context (trap_get_long / trap_get_string) instead of get_real_address /
++ * m68k_areg, so it is safe under amiberry's indirect trap model. */
 +
 +#include <stddef.h>
 +#include <stdint.h>
 +#include <stdio.h>
++#include <string.h>
 +#include <sys/param.h>
 +
 +static const char hexdigits[] = "0123456789abcdef";
@@ -125,13 +129,17 @@ Index: demoscene-toolchain/submodules/fs-uae/src/uaelib_log.cpp
 +  LADJUSTPAD();
 +}
 +
-+#define GETARG (get_long (m68k_areg (regs, 7) + (3 + (idx++)) * 4))
++#define GETARG (trap_get_long(ctx, trap_get_areg(ctx, 7) + (3 + (idx++)) * 4))
 +
-+static uae_u32 emulib_Log(uaecptr _fmt) {
++static uae_u32 emulib_Log(TrapContext *ctx, uaecptr _fmt) {
 +  int ch, lflag, width, idx = 0;
-+  const char *fmt = (char*)get_real_address(_fmt);
-+  const char *p, *q;
++  char fmtbuf[1024];
++  char sbuf[1024];
++  const char *fmt, *p, *q;
 +  uint32_t ul;
++
++  trap_get_string(ctx, fmtbuf, _fmt, sizeof fmtbuf);
++  fmt = fmtbuf;
 +
 +  for (;;) {
 +    while ((ch = *fmt++) != '%') {
@@ -187,10 +195,13 @@ Index: demoscene-toolchain/submodules/fs-uae/src/uaelib_log.cpp
 +        putchar(ch & 0xFF);
 +        LADJUSTPAD();
 +        break;
-+      case 's':
-+        p = (char*)get_real_address(GETARG);
-+        if (p == NULL)
-+          p = "(null)";
++      case 's': {
++        uaecptr sptr = GETARG;
++        if (sptr)
++          trap_get_string(ctx, sbuf, sptr, sizeof sbuf);
++        else
++          strcpy(sbuf, "(null)");
++        p = sbuf;
 +        for (q = p; *q != '\0'; ++q)
 +          continue;
 +        width -= q - p;
@@ -199,6 +210,7 @@ Index: demoscene-toolchain/submodules/fs-uae/src/uaelib_log.cpp
 +          putchar(ch);
 +        LADJUSTPAD();
 +        break;
++      }
 +      case 'd':
 +        ul = GETARG;
 +        if ((int32_t)ul < 0) {
@@ -227,3 +239,5 @@ Index: demoscene-toolchain/submodules/fs-uae/src/uaelib_log.cpp
 +    }
 +  }
 +}
++
++#undef GETARG

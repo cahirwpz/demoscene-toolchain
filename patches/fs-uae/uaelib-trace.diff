@@ -1,3 +1,10 @@
+Add Chrome-trace-format event tracing via uaelib traps 43-47.
+
+log_trace_event() emits JSON trace events (Begin/End/Counter/Instant/
+Metadata) over the parallel/printer TCP channel (sendprinter). Guest code
+drives it through emulib_TraceEvent (traps 43-47); the blitter and disk
+code are instrumented to emit events too.
+
 Index: demoscene-toolchain/submodules/fs-uae/src/blitter.cpp
 ===================================================================
 --- demoscene-toolchain.orig/submodules/fs-uae/src/blitter.cpp

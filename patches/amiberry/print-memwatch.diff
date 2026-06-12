@@ -2,11 +2,11 @@ Confirm when a memwatch (watchpoint) is added in the debugger.
 
 Prints "Memwatch %d added" in the debugger's memwatch() command.
 
-Index: demoscene-toolchain/submodules/fs-uae/src/debug.cpp
+Index: demoscene-toolchain/submodules/amiberry/src/debug.cpp
 ===================================================================
---- demoscene-toolchain.orig/submodules/fs-uae/src/debug.cpp
-+++ demoscene-toolchain/submodules/fs-uae/src/debug.cpp
-@@ -3849,6 +3849,7 @@ static void memwatch (TCHAR **c)
+--- demoscene-toolchain.orig/submodules/amiberry/src/debug.cpp
++++ demoscene-toolchain/submodules/amiberry/src/debug.cpp
+@@ -5273,6 +5273,7 @@ static void memwatch (TCHAR **c)
  		mwn->access_mask = MW_MASK_CPU_D_R | MW_MASK_CPU_D_W | MW_MASK_CPU_I;
  	if (mwn->frozen && mwn->rwi == 0)
  		mwn->rwi = 3;

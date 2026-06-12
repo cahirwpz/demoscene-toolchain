@@ -1,3 +1,8 @@
+Send debugger console output to stderr instead of stdout.
+
+Routes console_out_f(), console_out() and console_flush() to stderr so
+debugger text is kept off the program's stdout stream.
+
 Index: demoscene-toolchain/submodules/fs-uae/src/od-fs/writelog_fs.cpp
 ===================================================================
 --- demoscene-toolchain.orig/submodules/fs-uae/src/od-fs/writelog_fs.cpp

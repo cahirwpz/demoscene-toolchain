@@ -1,3 +1,9 @@
+Make macOS resolve data files like Linux rather than from the .app bundle.
+
+Disabling the FSEMU_OS_MACOS branch (renamed to FSEMU_OS_MACOS__DISABLE)
+makes fsemu_data_file_path() fall through to the #else lookup
+(../share/fs-uae/<file>) instead of ../Resources/Data/<file>.
+
 Index: demoscene-toolchain/submodules/fs-uae/fsemu/src/fsemu-data.c
 ===================================================================
 --- demoscene-toolchain.orig/submodules/fs-uae/fsemu/src/fsemu-data.c

@@ -1,3 +1,4 @@
 lhafile
 setuptools
 requests
+pre-commit

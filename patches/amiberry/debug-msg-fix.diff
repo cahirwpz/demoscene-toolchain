@@ -3,16 +3,16 @@ Report the PC of a triggered breakpoint instead of its index.
 The breakpoint-hit message in debug() prints "Breakpoint at %x" (the PC)
 rather than "Breakpoint %d triggered" (the breakpoint number).
 
-Index: demoscene-toolchain/submodules/fs-uae/src/debug.cpp
+Index: demoscene-toolchain/submodules/amiberry/src/debug.cpp
 ===================================================================
---- demoscene-toolchain.orig/submodules/fs-uae/src/debug.cpp
-+++ demoscene-toolchain/submodules/fs-uae/src/debug.cpp
-@@ -6474,7 +6474,7 @@ void debug (void)
+--- demoscene-toolchain.orig/submodules/amiberry/src/debug.cpp
++++ demoscene-toolchain/submodules/amiberry/src/debug.cpp
+@@ -8335,7 +8335,7 @@ void debug (void)
  				return;
  			}
- 			if (bp > 0)
--				console_out_f(_T("Breakpoint %d triggered.\n"), bp - 1);
+ 			if (bpnum >= 0) {
+-				console_out_f(_T("Breakpoint %d triggered.\n"), bpnum);
 +				console_out_f(_T("Breakpoint at %x\n"), pc);
- 			debug_cycles();
+ 			}
+ 			debug_cycles(1);
  		}
- 	} else {

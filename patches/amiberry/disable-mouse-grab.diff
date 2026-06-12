@@ -1,3 +1,15 @@
+Disable mouse grabbing when mouse untrapping is enabled.
+
+When running the emulator, mouse grabbing traps the cursor inside the
+window, which makes window switching and debugging cumbersome. This patch
+allows untrapping the mouse (releasing the SDL mouse capture) as long as
+tablet mode (absolute pointing) is enabled, even before the guest-side
+mousehack driver has loaded or became alive.
+
+Additionally, clicking the left mouse button inside the emulator window
+will no longer grab the mouse if mouse untrapping is configured and tablet
+mode is active.
+
 Index: demoscene-toolchain/submodules/amiberry/src/osdep/amiberry.cpp
 ===================================================================
 --- demoscene-toolchain.orig/submodules/amiberry/src/osdep/amiberry.cpp

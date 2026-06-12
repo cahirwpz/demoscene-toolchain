@@ -1,0 +1,46 @@
+Remap default keyboard shortcuts for Warp mode and Enter Debugger.
+
+Change default keyboard mapping for:
+- Warp Mode (INPUTEVENT_SPC_WARP) to Left Alt + w
+- Enter Debugger (INPUTEVENT_SPC_ENTERDEBUGGER) to Left Alt + d
+
+Index: demoscene-toolchain/submodules/amiberry/src/osdep/keyboard.cpp
+===================================================================
+--- demoscene-toolchain.orig/submodules/amiberry/src/osdep/keyboard.cpp
++++ demoscene-toolchain/submodules/amiberry/src/osdep/keyboard.cpp
+@@ -43,7 +43,7 @@ static struct uae_input_device_kbr_defau
+ 	{ SDL_SCANCODE_A, INPUTEVENT_KEY_A },
+ 	{ SDL_SCANCODE_B, INPUTEVENT_KEY_B },
+ 	{ SDL_SCANCODE_C, INPUTEVENT_KEY_C },
+-	{ SDL_SCANCODE_D, INPUTEVENT_KEY_D },
++	{ SDL_SCANCODE_D, INPUTEVENT_KEY_D, 0, INPUTEVENT_SPC_ENTERDEBUGGER, ID_FLAG_QUALIFIER_ALT },
+ 	{ SDL_SCANCODE_E, INPUTEVENT_KEY_E },
+ 	{ SDL_SCANCODE_F, INPUTEVENT_KEY_F },
+ 	{ SDL_SCANCODE_G, INPUTEVENT_KEY_G },
+@@ -62,7 +62,7 @@ static struct uae_input_device_kbr_defau
+ 	{ SDL_SCANCODE_T, INPUTEVENT_KEY_T },
+ 	{ SDL_SCANCODE_U, INPUTEVENT_KEY_U },
+ 	{ SDL_SCANCODE_V, INPUTEVENT_KEY_V },
+-	{ SDL_SCANCODE_W, INPUTEVENT_KEY_W },
++	{ SDL_SCANCODE_W, INPUTEVENT_KEY_W, 0, INPUTEVENT_SPC_WARP, ID_FLAG_QUALIFIER_ALT },
+ 	{ SDL_SCANCODE_X, INPUTEVENT_KEY_X },
+ 	{ SDL_SCANCODE_Y, INPUTEVENT_KEY_Y },
+ 	{ SDL_SCANCODE_Z, INPUTEVENT_KEY_Z },
+@@ -178,7 +178,7 @@ static struct uae_input_device_kbr_defau
+ 	{ SDL_SCANCODE_A, INPUTEVENT_KEY_A },
+ 	{ SDL_SCANCODE_B, INPUTEVENT_KEY_B },
+ 	{ SDL_SCANCODE_C, INPUTEVENT_KEY_C },
+-	{ SDL_SCANCODE_D, INPUTEVENT_KEY_D },
++	{ SDL_SCANCODE_D, INPUTEVENT_KEY_D, 0, INPUTEVENT_SPC_ENTERDEBUGGER, ID_FLAG_QUALIFIER_ALT },
+ 	{ SDL_SCANCODE_E, INPUTEVENT_KEY_E },
+ 	{ SDL_SCANCODE_F, INPUTEVENT_KEY_F },
+ 	{ SDL_SCANCODE_G, INPUTEVENT_KEY_G },
+@@ -196,7 +196,7 @@ static struct uae_input_device_kbr_defau
+ 	{ SDL_SCANCODE_S, INPUTEVENT_KEY_S },
+ 	{ SDL_SCANCODE_T, INPUTEVENT_KEY_T },
+ 	{ SDL_SCANCODE_U, INPUTEVENT_KEY_U },
+-	{ SDL_SCANCODE_W, INPUTEVENT_KEY_W },
++	{ SDL_SCANCODE_W, INPUTEVENT_KEY_W, 0, INPUTEVENT_SPC_WARP, ID_FLAG_QUALIFIER_ALT },
+ 	{ SDL_SCANCODE_V, INPUTEVENT_KEY_V },
+ 	{ SDL_SCANCODE_X, INPUTEVENT_KEY_X },
+ 	{ SDL_SCANCODE_Y, INPUTEVENT_KEY_Y },

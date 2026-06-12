@@ -1,0 +1,30 @@
+Index: demoscene-toolchain/submodules/amiberry/src/osdep/amiberry.cpp
+===================================================================
+--- demoscene-toolchain.orig/submodules/amiberry/src/osdep/amiberry.cpp
++++ demoscene-toolchain/submodules/amiberry/src/osdep/amiberry.cpp
+@@ -1193,12 +1193,9 @@ static void setmouseactive2(AmigaMonitor
+ 
+ 	if (isfullscreen() <= 0 && (currprefs.input_mouse_untrap & MOUSEUNTRAP_MAGIC)) {
+ 		if (currprefs.input_tablet > 0) {
+-			if (mousehack_alive()) {
+-				releasecapture(mon);
+-				recapture = 0;
+-				return;
+-			}
+-			SDL_SetCursor(normalcursor);
++			releasecapture(mon);
++			recapture = 0;
++			return;
+ 		} else {
+ 			recapture = 0;
+ 		}
+@@ -2534,8 +2531,7 @@ static void handle_mouse_button_event(co
+ 	const auto clicks = event.button.clicks;
+ 	const int midx = get_mouse_index_from_sdl_id(event.button.which);
+ 
+-	if (button == SDL_BUTTON_LEFT && !mouseactive && (!mousehack_alive() || currprefs.input_tablet != TABLET_MOUSEHACK ||
+-		(currprefs.input_tablet == TABLET_MOUSEHACK && !(currprefs.input_mouse_untrap & MOUSEUNTRAP_MAGIC))))
++	if (button == SDL_BUTTON_LEFT && !mouseactive && (!(currprefs.input_mouse_untrap & MOUSEUNTRAP_MAGIC) || currprefs.input_tablet == TABLET_OFF))
+ 	{
+ 		mouseinside = true;
+ 		if (!pause_emulation || currprefs.active_nocapture_pause)

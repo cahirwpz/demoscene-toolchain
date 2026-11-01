@@ -1,0 +1,89 @@
+Index: demoscene-toolchain/submodules/binutils-gdb/gdb/python/python-internal.h
+===================================================================
+--- demoscene-toolchain.orig/submodules/binutils-gdb/gdb/python/python-internal.h
++++ demoscene-toolchain/submodules/binutils-gdb/gdb/python/python-internal.h
+@@ -177,20 +177,6 @@ gdb_PySys_GetObject (const char *name)
+ 
+ #define PySys_GetObject gdb_PySys_GetObject
+ 
+-/* PySys_SetPath's 'path' parameter was missing the 'const' qualifier
+-   before Python 3.6.  Hence, we wrap it in a function to avoid errors
+-   when compiled with -Werror.  */
+-
+-# define GDB_PYSYS_SETPATH_CHAR wchar_t
+-
+-static inline void
+-gdb_PySys_SetPath (const GDB_PYSYS_SETPATH_CHAR *path)
+-{
+-  PySys_SetPath (const_cast<GDB_PYSYS_SETPATH_CHAR *> (path));
+-}
+-
+-#define PySys_SetPath gdb_PySys_SetPath
+-
+ /* Wrap PyGetSetDef to allow convenient construction with string
+    literals.  Unfortunately, PyGetSetDef's 'name' and 'doc' members
+    are 'char *' instead of 'const char *', meaning that in order to
+Index: demoscene-toolchain/submodules/binutils-gdb/gdb/python/python.c
+===================================================================
+--- demoscene-toolchain.orig/submodules/binutils-gdb/gdb/python/python.c
++++ demoscene-toolchain/submodules/binutils-gdb/gdb/python/python.c
+@@ -2328,7 +2328,11 @@ do_initialize (const struct extension_la
+   /* If sys.path is not defined yet, define it first.  */
+   if (!(sys_path && PyList_Check (sys_path)))
+     {
+-      PySys_SetPath (L"");
++      /* PySys_SetPath was removed in Python 3.13.  */
++      gdbpy_ref<> empty_path (PyList_New (0));
++      if (empty_path == NULL
++	  || PySys_SetObject ("path", empty_path.get ()) < 0)
++	return false;
+       sys_path = PySys_GetObject ("path");
+     }
+   if (sys_path && PyList_Check (sys_path))
+Index: demoscene-toolchain/submodules/binutils-gdb/gdb/python/py-gdb-readline.c
+===================================================================
+--- demoscene-toolchain.orig/submodules/binutils-gdb/gdb/python/py-gdb-readline.c
++++ demoscene-toolchain/submodules/binutils-gdb/gdb/python/py-gdb-readline.c
+@@ -51,13 +51,10 @@ gdbpy_readline_wrapper (FILE *sys_stdin,
+       if (except.reason == RETURN_QUIT)
+ 	return NULL;
+ 
+-      /* The thread state is nulled during gdbpy_readline_wrapper,
+-	 with the original value saved in the following undocumented
+-	 variable (see Python's Parser/myreadline.c and
+-	 Modules/readline.c).  */
+-      PyEval_RestoreThread (_PyOS_ReadlineTState);
++      /* This readline callback is called without the GIL held.  */
++      PyGILState_STATE state = PyGILState_Ensure ();
+       gdbpy_convert_exception (except);
+-      PyEval_SaveThread ();
++      PyGILState_Release (state);
+       return NULL;
+     }
+ 
+@@ -96,17 +93,21 @@ gdbpy_initialize_gdb_readline (void)
+      module.  */
+   if (PyRun_SimpleString ("\
+ import sys\n\
++from importlib.machinery import ModuleSpec\n\
+ \n\
+ class GdbRemoveReadlineFinder:\n\
+-  def find_module(self, fullname, path=None):\n\
++  def find_spec(self, fullname, path=None, target=None):\n\
+     if fullname == 'readline' and path is None:\n\
+-      return self\n\
++      return ModuleSpec(fullname, self)\n\
+     return None\n\
+ \n\
+-  def load_module(self, fullname):\n\
++  def create_module(self, spec):\n\
+     raise ImportError('readline module disabled under GDB')\n\
+ \n\
+-sys.meta_path.append(GdbRemoveReadlineFinder())\n\
++  def exec_module(self, module):\n\
++    pass\n\
++\n\
++sys.meta_path.insert(0, GdbRemoveReadlineFinder())\n\
+ ") == 0)
+     PyOS_ReadlineFunctionPointer = gdbpy_readline_wrapper;
+ }

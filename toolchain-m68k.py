@@ -236,52 +236,62 @@ def build():
 
   unpack('{automake}')
 
-  unpack('{m4}')
-  patch('{m4}')
-  configure('{m4}', '--prefix={host}')
-  make('{m4}', parallel=True)
-  make('{m4}', 'install')
+  """
+  Legacy host tools (and gcc 2.95.3 below) predate C23 and the stricter
+  diagnostics of gcc >= 14 (implicit declarations, K&R prototypes). This also
+  covers gmp, whose configure probes call K&R-declared functions.
+  """
+  CCLEGACY = ' '.join([CC, '-std=gnu17'])
 
-  unpack('{gawk}')
-  update_autotools('{sources}/{gawk}')
-  patch('{gawk}')
-  configure('{gawk}', '--prefix={host}')
-  make('{gawk}', parallel=True)
-  make('{gawk}', 'install')
+  with env(CC=CCLEGACY):
+    unpack('{m4}')
+    patch('{m4}')
+    configure('{m4}', '--prefix={host}')
+    make('{m4}', parallel=True)
+    make('{m4}', 'install')
 
-  unpack('{flex}')
-  patch('{flex}')
-  configure('{flex}', '--prefix={host}')
-  make('{flex}')
-  make('{flex}', 'install')
+    unpack('{gawk}')
+    update_autotools('{sources}/{gawk}')
+    patch('{gawk}')
+    configure('{gawk}', '--prefix={host}')
+    make('{gawk}', parallel=True)
+    make('{gawk}', 'install')
 
-  unpack('{bison}')
-  update_autotools('{sources}/{bison}/config')
-  patch('{bison}')
-  configure('{bison}', '--prefix={host}')
-  make('{bison}', parallel=True)
-  make('{bison}', 'install')
+    unpack('{flex}')
+    patch('{flex}')
+    # flex calls exit() without including <stdlib.h>
+    with env(CC=CCLEGACY + ' -Wno-error=implicit-function-declaration'):
+      configure('{flex}', '--prefix={host}')
+      make('{flex}')
+      make('{flex}', 'install')
 
-  unpack('{texinfo}')
-  patch('{texinfo}')
-  update_autotools('{sources}/{texinfo}/build-aux')
-  configure('{texinfo}', '--prefix={host}')
-  make('{texinfo}', parallel=True)
-  make('{texinfo}', 'install')
+    unpack('{bison}')
+    update_autotools('{sources}/{bison}/config')
+    patch('{bison}')
+    configure('{bison}', '--prefix={host}')
+    make('{bison}', parallel=True)
+    make('{bison}', 'install')
 
-  unpack('{autoconf}')
-  update_autotools('{sources}/{autoconf}')
-  configure('{autoconf}', '--prefix={host}')
-  make('{autoconf}', parallel=True)
-  make('{autoconf}', 'install')
+    unpack('{texinfo}')
+    patch('{texinfo}')
+    update_autotools('{sources}/{texinfo}/build-aux')
+    configure('{texinfo}', '--prefix={host}')
+    make('{texinfo}', parallel=True)
+    make('{texinfo}', 'install')
 
-  unpack('{gmp}')
-  configure('{gmp}',
-            '--prefix={host}',
-            '--disable-shared',
-            '--enable-static')
-  make('{gmp}', parallel=True)
-  make('{gmp}', 'install')
+    unpack('{autoconf}')
+    update_autotools('{sources}/{autoconf}')
+    configure('{autoconf}', '--prefix={host}')
+    make('{autoconf}', parallel=True)
+    make('{autoconf}', 'install')
+
+    unpack('{gmp}')
+    configure('{gmp}',
+              '--prefix={host}',
+              '--disable-shared',
+              '--enable-static')
+    make('{gmp}', parallel=True)
+    make('{gmp}', 'install')
 
   unpack('{mpfr}')
   configure('{mpfr}',
@@ -319,8 +329,9 @@ def build():
 
   update_autotools('{submodules}/fd2sfd')
   unpack('fd2sfd', work_dir='{build}')
-  configure('fd2sfd', '--prefix={prefix}', from_dir='{build}/fd2sfd')
-  make('fd2sfd')
+  with env(CC=CCLEGACY):
+    configure('fd2sfd', '--prefix={prefix}', from_dir='{build}/fd2sfd')
+    make('fd2sfd')
   install_fd2sfd()
 
   unpack('fd2pragma', work_dir='{build}')
@@ -361,7 +372,11 @@ def build():
     make('{binutils}', 'install-ld')
     make('{binutils}', 'install-gdb')
 
-  CCOLD = ' '.join([CC, '-std=gnu99'])
+  # gcc >= 14 turned these into errors; gcc 2.95.3 sources trip all three.
+  CCOLD = ' '.join([CC, '-std=gnu99',
+                    '-Wno-error=implicit-int',
+                    '-Wno-error=implicit-function-declaration',
+                    '-Wno-error=incompatible-pointer-types'])
   CXXOLD = ' '.join([CXX, '-std=gnu++11'])
 
   with env(CC=CCOLD, CXX=CXXOLD, CFLAGS=FLAGS, CXXFLAGS=FLAGS):

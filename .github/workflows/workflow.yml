@@ -5,7 +5,36 @@ on:
   workflow_dispatch:
 
 jobs:
+  version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # draft releases are only listed with push access
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+
+    steps:
+    - name: Pick release version
+      id: version
+      if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master'
+      env:
+        GH_TOKEN: ${{ github.token }}
+        GH_REPO: ${{ github.repository }}
+      run: |
+        DATE=$(date -u +%Y.%m.%d)
+        TAKEN=$( { gh api --paginate "repos/$GH_REPO/releases" -q '.[].tag_name'
+                   gh api --paginate "repos/$GH_REPO/tags" -q '.[].name'; } | sort -u)
+        N=1
+        TAG=${DATE//./-}
+        while grep -qx "$TAG" <<< "$TAKEN"; do
+          N=$((N + 1))
+          TAG=${DATE//./-}-$N
+        done
+        echo "version=$DATE+$N" >> "$GITHUB_OUTPUT"
+        echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
   build:
+    needs: version
     runs-on: ubuntu-latest
     container: cahirwpz/demoscene-toolchain:ubuntu-26.04
 
@@ -23,6 +52,8 @@ jobs:
       run: ./toolchain-m68k --quiet build --prefix=/opt/amiga
 
     - name: Build Debian package
+      env:
+        VERSION: ${{ needs.version.outputs.version }}
       run: env PREFIX=/opt/amiga ./build-deb
 
     - name: Upload toolchain
@@ -33,14 +64,12 @@ jobs:
 
   release:
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master'
-    needs: build
+    needs: [version, build]
     runs-on: ubuntu-latest
     permissions:
       contents: write
 
     steps:
-    - uses: actions/checkout@v4
-
     - uses: actions/download-artifact@v4
       with:
         name: demoscene-toolchain
@@ -48,13 +77,9 @@ jobs:
     - name: Create draft release
       env:
         GH_TOKEN: ${{ github.token }}
+        GH_REPO: ${{ github.repository }}
+        VERSION: ${{ needs.version.outputs.version }}
+        TAG: ${{ needs.version.outputs.tag }}
       run: |
-        VERSION=$(sed -n '1s/^[^(]*(\([^)]*\)).*/\1/p' debian/changelog)
-        TAG=$(echo "${VERSION%+*}" | tr . -)
-        if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null ||
-           gh release view "$TAG" >/dev/null 2>&1; then
-          echo "::error::Release $TAG already exists; add a debian/changelog entry first."
-          exit 1
-        fi
         gh release create "$TAG" "demoscene-toolchain_${VERSION}_amd64.deb" \
           --draft --target "$GITHUB_SHA" --title "$TAG" --generate-notes

@@ -37,9 +37,7 @@ env PREFIX=/opt/amiga ./build-deb
 Releasing
 ---
 
-1. Add a `debian/changelog` entry (version `YYYY.MM.DD+1`) and merge it to
-   `master`.
-2. Run the CI workflow on `master`: *Actions → Demoscene Toolchain → Run
-   workflow*, or `gh workflow run workflow.yml --ref master`.
-3. CI builds the `.deb` and creates a draft release tagged `YYYY-MM-DD` with
-   the package attached and generated notes. Review and publish it.
+Run the CI workflow on `master`: *Actions → Demoscene Toolchain → Run
+workflow*, or `gh workflow run workflow.yml --ref master`. It builds the `.deb`
+(version `YYYY.MM.DD+N`) and creates a draft release with generated notes.
+Review and publish it.

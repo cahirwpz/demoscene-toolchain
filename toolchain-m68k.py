@@ -32,7 +32,7 @@ URLS = \
     'lzsa-1.4.1.tar.gz'),
    'https://ftp.gnu.org/old-gnu/gnu-0.2/src/flex-2.5.4.tar.gz',
    ('http://hp.alinea-computer.de/AmigaOS/NDK39.lha', 'NDK_3.9.lha'),
-   ('http://phoenix.owl.de/tags/vasm1_9c.tar.gz', 'vasm.tar.gz')]
+   'http://phoenix.owl.de/tags/vasm2_0f.tar.gz']
 
 
 from common import (setvar, execute, rmtree, configure, unpack, path, panic,
@@ -51,11 +51,11 @@ def prepare_target():
           'ndk/lib', 'ndk/lib/fd', 'ndk/lib/sfd')
 
 
-@recipe('vasm-install')
+@recipe('{vasm}-install')
 def install_vasm():
   info('installing vasm')
 
-  copy('{build}/vasm/vasmm68k_mot', '{prefix}/{target}/bin')
+  copy('{build}/{vasm}/vasmm68k_mot', '{prefix}/{target}/bin')
   vasm = textfile(
     '#!/bin/sh',
     '',
@@ -323,8 +323,8 @@ def build():
 
   prepare_target()
 
-  unpack('vasm', work_dir='{build}')
-  make('vasm', CPU='m68k', SYNTAX='mot')
+  unpack('{vasm}', work_dir='{build}', top_dir='vasm')
+  make('{vasm}', CPU='m68k', SYNTAX='mot')
   install_vasm()
 
   update_autotools('{submodules}/fd2sfd')
@@ -511,6 +511,7 @@ if __name__ == "__main__":
          shrinkler='Shrinkler-4.7',
          salvador='salvador-1.4.2',
          lzsa='lzsa-1.4.1',
+         vasm='vasm2_0f',
          target='m68k-amigaos',
          python=sys.executable,
          patches=path.join('{top}', 'patches'),

@@ -17,6 +17,6 @@ Description: Toolchain for cahirwpz@ demoscene projects
   * gcc 2.95.3 (patched)
   * gcc 6.5.0b (from Bebbo)
   * binutils 2.39.0 (patched, from Bebbo)
-  * vasm (1.9c)
+  * vasm (2.0f)
   * fs-uae (patched)
   * compressors (lzsa, salvador, Shrinkler)

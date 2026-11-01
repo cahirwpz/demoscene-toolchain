@@ -1,7 +1,7 @@
 AmigaOS m68k compiler for use with my demoscene project
 ===
 
-[![Build Status](https://circleci.com/gh/cahirwpz/demoscene-toolchain.svg?&style=shield)](https://circleci.com/gh/cahirwpz/demoscene-toolchain)
+[![Build Status](https://github.com/cahirwpz/demoscene-toolchain/actions/workflows/workflow.yml/badge.svg)](https://github.com/cahirwpz/demoscene-toolchain/actions/workflows/workflow.yml)
 
 **Author:** [Krystian Bacławski](mailto:krystian.baclawski@gmail.com)
 
@@ -20,24 +20,13 @@ sudo apt install --no-install-recommends \
 
 Only the listed packages are required; recommended packages are not needed.
 
-Clone with submodules and build:
+Clone with submodules and build (default prefix is `./m68k-amigaos`):
 
 ```
 git clone --recurse-submodules https://github.com/cahirwpz/demoscene-toolchain
 cd demoscene-toolchain
 ./toolchain-m68k build [--prefix=/opt/amiga]
 ```
-
-The default prefix is `./m68k-amigaos`. `./toolchain-m68k` creates a Python
-virtualenv in `.venv` and forwards its arguments to `toolchain-m68k.py`:
-
-* `download` – fetch source archives into `.build-m68k/archives` and update
-  submodules,
-* `build` – download, apply `patches/series` with quilt and build everything,
-* `clean` – remove `.build-m68k` (except archives) and unapply patches.
-
-Each step leaves a stamp in `.build-m68k/stamps`, so an interrupted build
-resumes where it stopped. Delete a stamp to redo that step.
 
 To build a Debian package (needs `debhelper` and `fakeroot`):
 

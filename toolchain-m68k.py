@@ -80,25 +80,6 @@ def install_ndk():
   copytree('{sources}/{NDK}/Autodocs', '{prefix}/{target}/ndk/doc')
 
 
-@recipe('fd2sfd-install')
-def install_fd2sfd():
-  info('installing fd2sfd')
-
-  copy('{build}/fd2sfd/fd2sfd', '{prefix}/bin')
-  copy('{build}/fd2sfd/cross/share/{target}/alib.h',
-       '{prefix}/{target}/ndk/include/inline')
-
-
-@recipe('fd2pragma-install')
-def install_fd2pragma():
-  info('installing fd2pragma')
-
-  copy('{build}/fd2pragma/fd2pragma', '{prefix}/bin')
-  for header in ['macros.h', 'stubs.h']:
-      copy(path.join('{build}/fd2pragma/Include/inline', header),
-           '{prefix}/{target}/ndk/include/inline')
-
-
 @recipe('shrinkler-install')
 def install_shrinkler():
   info('installing shrinkler')
@@ -217,7 +198,6 @@ def build():
   """
 
   find_executable('perl')
-  find_executable('pod2text')
   find_executable('pod2man')
   find_executable('gperf')
   find_executable('patch')
@@ -325,22 +305,6 @@ def build():
   unpack('{vasm}', work_dir='{build}', top_dir='vasm')
   make('{vasm}', CPU='m68k', SYNTAX='mot')
   install_vasm()
-
-  update_autotools('{submodules}/fd2sfd')
-  unpack('fd2sfd', work_dir='{build}')
-  with env(CC=CCLEGACY):
-    configure('fd2sfd', '--prefix={prefix}', from_dir='{build}/fd2sfd')
-    make('fd2sfd')
-  install_fd2sfd()
-
-  unpack('fd2pragma', work_dir='{build}')
-  make('fd2pragma')
-  install_fd2pragma()
-
-  unpack('sfdc')
-  configure('sfdc', '--prefix={prefix}', copy_source=True)
-  make('sfdc')
-  make('sfdc', 'install')
 
   unpack('{NDK}', top_dir='.')
   patch('{NDK}')

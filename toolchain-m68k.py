@@ -7,6 +7,7 @@ from glob import glob
 from logging import info, getLogger
 from os import environ
 import argparse
+import hashlib
 import logging
 import platform
 import sys
@@ -31,7 +32,8 @@ URLS = \
    ('https://github.com/emmanuel-marty/lzsa/archive/refs/tags/1.4.1.tar.gz',
     'lzsa-1.4.1.tar.gz'),
    'https://ftp.gnu.org/old-gnu/gnu-0.2/src/flex-2.5.4.tar.gz',
-   ('http://hp.alinea-computer.de/AmigaOS/NDK39.lha', 'NDK_3.9.lha'),
+   ('https://aminet.net/dev/misc/NDK3.2.lha', 'NDK3.2R4.lha',
+    '96cabd4ad683dced632e147bf86dee0f50dcb1254386216c25c362916a6409bb'),
    'http://phoenix.owl.de/tags/vasm2_0f.tar.gz']
 
 
@@ -68,23 +70,14 @@ def install_vasm():
 def install_ndk():
   info('installing ndk')
 
-  copytree('{sources}/{NDK}/Include/include_h', '{prefix}/{target}/ndk/include')
-  copytree('{sources}/{NDK}/Include/include_i', '{prefix}/{target}/ndk/include')
-  copytree('{sources}/{NDK}/Include/fd', '{prefix}/{target}/ndk/lib/fd')
-  copytree('{sources}/{NDK}/Include/sfd', '{prefix}/{target}/ndk/lib/sfd')
-  copytree('{sources}/{NDK}/Include/linker_libs', '{prefix}/{target}/ndk/lib',
+  # NDK 3.2 ships GCC proto/ and inline/ headers and lvo/ files.
+  copytree('{sources}/{NDK}/Include_H', '{prefix}/{target}/ndk/include')
+  copytree('{sources}/{NDK}/Include_I', '{prefix}/{target}/ndk/include')
+  copytree('{sources}/{NDK}/FD', '{prefix}/{target}/ndk/lib/fd')
+  copytree('{sources}/{NDK}/SFD', '{prefix}/{target}/ndk/lib/sfd')
+  copytree('{sources}/{NDK}/lib', '{prefix}/{target}/ndk/lib',
            exclude=['README'])
-  copytree('{sources}/{NDK}/Documentation/Autodocs', '{prefix}/{target}/ndk/doc')
-
-  for name in find('{prefix}/{target}/ndk/lib/sfd', include=['*.sfd']):
-    base = path.basename(name).split('_')[0]
-
-    execute('sfdc', '--target=m68k-amigaos', '--mode=proto',
-            '--output={prefix}/{target}/ndk/include/proto/%s.h' % base, name)
-    execute('sfdc', '--target=m68k-amigaos', '--mode=macros',
-            '--output={prefix}/{target}/ndk/include/inline/%s.h' % base, name)
-    execute('sfdc', '--target=m68k-amigaos', '--mode=lvo',
-            '--output={prefix}/{target}/ndk/include/lvo/%s_lib.i' % base, name)
+  copytree('{sources}/{NDK}/Autodocs', '{prefix}/{target}/ndk/doc')
 
 
 @recipe('fd2sfd-install')
@@ -157,11 +150,17 @@ def touch_genfiles(dst):
 def download():
   with cwd('{archives}'):
     for url in URLS:
+      sha256 = None
       if type(url) is tuple:
-        url, name = url[0], url[1]
+        url, name, sha256 = (url + (None,))[:3]
       else:
         name = path.basename(url)
       fetch(name, url)
+      if sha256 is not None:
+        with open(name, 'rb') as f:
+          digest = hashlib.sha256(f.read()).hexdigest()
+        if digest != sha256:
+          panic('"%s" has SHA-256 %s, expected %s!', name, digest, sha256)
 
   execute('git', 'submodule', 'init');
   execute('git', 'submodule', 'update');
@@ -343,7 +342,7 @@ def build():
   make('sfdc')
   make('sfdc', 'install')
 
-  unpack('{NDK}')
+  unpack('{NDK}', top_dir='.')
   patch('{NDK}')
   install_ndk()
 
@@ -503,7 +502,7 @@ if __name__ == "__main__":
          mpfr='mpfr-3.1.6',
          mpc='mpc-1.0.3',
          isl='isl-0.18',
-         NDK='NDK_3.9',
+         NDK='NDK3.2R4',
          binutils='binutils-gdb',
          fsuae='fs-uae',
          gcc='gcc-2.95.3',

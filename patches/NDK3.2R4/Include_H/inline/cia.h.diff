@@ -1,0 +1,46 @@
+--- NDK3.2R4/Include_H/inline/cia.h	2026-11-01 12:42:46.339089291 +0100
++++ NDK3.2R4/Include_H/inline/cia.h	2026-11-01 12:43:14.010422336 +0100
+@@ -17,8 +17,8 @@
+   LONG _AddICRVector_iCRBit = (iCRBit); \
+   struct Interrupt * _AddICRVector_interrupt = (interrupt); \
+   ({ \
+-  register char * _AddICRVector__bn __asm("a6") = (char *) (resource);\
+-  ((struct Interrupt * (*)(struct Library * __asm("a6"), LONG __asm("d0"), struct Interrupt * __asm("a1"))) \
++  register char * _AddICRVector__bn __asm("a6") = (char *) (_AddICRVector_resource);\
++  ((struct Interrupt * (*)(char * __asm("a6"), LONG __asm("d0"), struct Interrupt * __asm("a1"))) \
+   (_AddICRVector__bn - 6))(_AddICRVector__bn, _AddICRVector_iCRBit, _AddICRVector_interrupt); \
+ });})
+ 
+@@ -27,8 +27,8 @@
+   LONG _RemICRVector_iCRBit = (iCRBit); \
+   struct Interrupt * _RemICRVector_interrupt = (interrupt); \
+   ({ \
+-  register char * _RemICRVector__bn __asm("a6") = (char *) (resource);\
+-  ((VOID (*)(struct Library * __asm("a6"), LONG __asm("d0"), struct Interrupt * __asm("a1"))) \
++  register char * _RemICRVector__bn __asm("a6") = (char *) (_RemICRVector_resource);\
++  ((VOID (*)(char * __asm("a6"), LONG __asm("d0"), struct Interrupt * __asm("a1"))) \
+   (_RemICRVector__bn - 12))(_RemICRVector__bn, _RemICRVector_iCRBit, _RemICRVector_interrupt); \
+ });})
+ 
+@@ -36,8 +36,8 @@
+   struct Library * _AbleICR_resource = (resource); \
+   LONG _AbleICR_mask = (mask); \
+   ({ \
+-  register char * _AbleICR__bn __asm("a6") = (char *) (resource);\
+-  ((WORD (*)(struct Library * __asm("a6"), LONG __asm("d0"))) \
++  register char * _AbleICR__bn __asm("a6") = (char *) (_AbleICR_resource);\
++  ((WORD (*)(char * __asm("a6"), LONG __asm("d0"))) \
+   (_AbleICR__bn - 18))(_AbleICR__bn, _AbleICR_mask); \
+ });})
+ 
+@@ -45,8 +45,8 @@
+   struct Library * _SetICR_resource = (resource); \
+   LONG _SetICR_mask = (mask); \
+   ({ \
+-  register char * _SetICR__bn __asm("a6") = (char *) (resource);\
+-  ((WORD (*)(struct Library * __asm("a6"), LONG __asm("d0"))) \
++  register char * _SetICR__bn __asm("a6") = (char *) (_SetICR_resource);\
++  ((WORD (*)(char * __asm("a6"), LONG __asm("d0"))) \
+   (_SetICR__bn - 24))(_SetICR__bn, _SetICR_mask); \
+ });})
+ 

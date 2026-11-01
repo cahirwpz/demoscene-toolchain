@@ -1,0 +1,15 @@
+--- NDK3.2R4/Include_H/graphics/gels.h	2026-11-01 12:42:46.342638380 +0100
++++ NDK3.2R4/Include_H/graphics/gels.h	2026-11-01 12:42:54.654663072 +0100
+@@ -274,7 +274,12 @@
+      *
+      *          VOID (*collPtrs[1..15])(struct VSprite *,struct VSPrite *);
+      */
++#if defined(__GNUC__) && __GNUC__ < 3
++    /* gcc 2.x ignores (and warns about) __stkparm__ on an array member. */
++    LONG (* collPtrs[16]) __CLIB_PROTOTYPE((struct VSprite *,struct VSprite *));
++#else
+     LONG (* __STDARGS__ collPtrs[16]) __CLIB_PROTOTYPE((struct VSprite *,struct VSprite *));
++#endif
+ };
+ 
+ #endif	/* GRAPHICS_GELS_H */

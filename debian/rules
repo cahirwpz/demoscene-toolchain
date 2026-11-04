@@ -16,7 +16,7 @@ binary:
 	dh_compress
 	dh_fixperms
 	dh_installdeb
-	dh_shlibdeps
+	dh_shlibdeps -l$(PREFIX)/lib/amiberry
 	dh_gencontrol
 	dh_md5sums
 	dh_builddeb --destdir=.

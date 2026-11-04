@@ -6,7 +6,7 @@ on:
 
 jobs:
   version:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: write  # draft releases are only listed with push access
     outputs:
@@ -35,7 +35,7 @@ jobs:
 
   build:
     needs: version
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     container: cahirwpz/demoscene-toolchain:ubuntu-26.04
 
     steps:
@@ -65,7 +65,7 @@ jobs:
   release:
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master'
     needs: [version, build]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: write
 

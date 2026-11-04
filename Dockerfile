@@ -16,10 +16,6 @@ RUN apt-get install -y --no-install-recommends \
             libpng-dev libsdl2-dev libsdl2-ttf-dev libtool make patch perl \
             pkg-config python3 python3-dev python3-venv quilt texinfo zip \
             debhelper fakeroot cmake \
-            libx11-dev libxext-dev libxcursor-dev libxi-dev libxfixes-dev \
-            libxrandr-dev libxrender-dev libxss-dev libxkbcommon-dev \
-            libwayland-dev wayland-protocols libdecor-0-dev \
-            libgl1-mesa-dev libegl1-mesa-dev libgles2-mesa-dev libdrm-dev \
-            libgbm-dev libasound2-dev libpulse-dev libudev-dev libdbus-1-dev \
-            libjpeg-dev libflac-dev libmpg123-dev libcurl4-openssl-dev \
-            nlohmann-json3-dev zlib1g-dev
+            libsdl3-dev libsdl3-image-dev libgl-dev libdbus-1-dev \
+            libflac-dev libmpg123-dev libcurl4-openssl-dev nlohmann-json3-dev \
+            zlib1g-dev

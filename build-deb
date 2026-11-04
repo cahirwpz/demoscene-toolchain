@@ -16,5 +16,5 @@ demoscene-toolchain (${VERSION}) unstable; urgency=medium
 
  -- $(sed -n 's/^Maintainer: //p' debian/control)  $(date -R)
 EOF
-make -f ./debian/rules binary
+make -f ./debian/rules binary || exit 1
 make -f ./debian/rules clean

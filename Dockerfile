@@ -11,8 +11,11 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get -q update && apt-get upgrade -y
 RUN apt-get install -y --no-install-recommends \
-            automake autoconf bison ca-certificates flex gcc g++ gettext git \
-            gperf libc6-dev libglib2.0-dev libncurses-dev libopenal-dev \
-            libpng-dev libsdl2-dev libsdl2-ttf-dev libtool make patch perl \
-            pkg-config python3 python3-dev python3-venv quilt texinfo zip \
-            debhelper fakeroot
+            automake autoconf bison ca-certificates flex gcc g++ gettext git gperf \
+            libc6-dev libglib2.0-dev libncurses-dev libpng-dev libsdl2-dev \
+            libsdl2-ttf-dev make patch perl pkg-config python3 python3-dev \
+            python3-venv quilt texinfo zip \
+            debhelper fakeroot cmake \
+            libsdl3-dev libsdl3-image-dev libgl-dev libdbus-1-dev \
+            libflac-dev libmpg123-dev libcurl4-openssl-dev nlohmann-json3-dev \
+            zlib1g-dev

@@ -14,8 +14,8 @@ import sys
 
 from common import chmod, configure, copy, copytree, cwd, env, execute, exists, fetch
 from common import fill_in, find, find_executable, join, make, mkdir, move, panic, patch
-from common import path, recipe, remove, require_header, rmtree, setvar, textfile, touch
-from common import unpack
+from common import path, recipe, remove, require_header, require_packages, rmtree
+from common import setvar, textfile, touch, unpack
 from packages import PACKAGES, PACKAGE_VARS, resolve_package
 
 
@@ -92,6 +92,15 @@ def fs_uae_bootstrap():
         execute("sh", "bootstrap")
 
 
+@recipe("cmake", 1)
+def cmake_configure(name, *opts, src_dir=None):
+    info('configuring "%s" with cmake', name)
+
+    src = src_dir or join("{submodules}", name)
+    with cwd(join("{build}", name)):
+        execute("cmake", "-S", src, "-B", ".", "-G", "Unix Makefiles", *opts)
+
+
 def update_autotools(dst):
     copy("{sources}/{automake}/lib/config.guess", join(dst, "config.guess"))
     copy("{sources}/{automake}/lib/config.sub", join(dst, "config.sub"))
@@ -126,6 +135,10 @@ def download():
 
     execute("git", "submodule", "init")
     execute("git", "submodule", "update")
+    # amiberry's own submodules (native file dialogs).
+    execute(
+        "git", "submodule", "update", "--init", "--recursive", "{submodules}/{amiberry}"
+    )
 
 
 def prepare_build_env():
@@ -177,6 +190,7 @@ def prepare_build_env():
   """
 
     find_executable("perl")
+    find_executable("pod2text")
     find_executable("pod2man")
     find_executable("gperf")
     find_executable("patch")
@@ -184,11 +198,34 @@ def prepare_build_env():
     find_executable("makeinfo")
     find_executable("git")
     find_executable("yacc")
+    find_executable("cmake")
 
     require_header(
         ["ncurses.h", "ncurses/ncurses.h"],
         lang="c",
         errmsg="libncurses-dev package missing",
+    )
+
+    # On Debian-based systems check upfront that every development package the
+    # build relies on is installed, so a missing library fails fast with an
+    # apt-get hint instead of a cryptic error deep inside the amiberry build.
+    # Keep the Dockerfile package list in sync with this one.
+    require_packages(
+        "libsdl2-dev",
+        "libsdl2-ttf-dev",
+        "libpng-dev",
+        "libncurses-dev",
+        "libglib2.0-dev",
+        # amiberry
+        "libsdl3-dev",
+        "libsdl3-image-dev",
+        "libgl-dev",
+        "libdbus-1-dev",
+        "libflac-dev",
+        "libmpg123-dev",
+        "libcurl4-openssl-dev",
+        "nlohmann-json3-dev",
+        "zlib1g-dev",
     )
 
 
@@ -428,6 +465,33 @@ def phase_fs_uae():
         make("{fsuae}", "install")
 
 
+def phase_amiberry():
+    with env(
+        CC="{cc}", CXX="{cxx}", CFLAGS="{flags}", CXXFLAGS="{flags}", PATH="{path}"
+    ):
+        cmake_configure(
+            "{amiberry}",
+            "-DCMAKE_BUILD_TYPE=Release",
+            "-DCMAKE_INSTALL_PREFIX={prefix}",
+            "-DUSE_JIT=OFF",
+            "-DUSE_PCEM=OFF",
+            "-DUSE_PPC=OFF",
+            "-DUSE_QEMU_PPC=OFF",
+            "-DUSE_FFMPEG=OFF",
+            "-DUSE_WEBP=OFF",
+            "-DUSE_VIDEOGRAB=OFF",
+            "-DUSE_LIBSERIALPORT=OFF",
+            "-DUSE_LIBENET=OFF",
+            "-DUSE_PORTMIDI=OFF",
+            "-DUSE_LIBMPEG2=OFF",
+            "-DUSE_UAENET_PCAP=OFF",
+            "-DUSE_UAENET_TAP=OFF",
+            "-DUSE_ZSTD=OFF",
+        )
+        make("{amiberry}", parallel=True)
+        make("{amiberry}", "install")
+
+
 def phase_compressors():
     unpack("{shrinkler}", work_dir="{build}")
     make("{shrinkler}")
@@ -471,6 +535,7 @@ BUILD_PHASES = [
     ("gcc", phase_gcc, ["{gcc}-make*"]),
     ("gcc-bebbo", phase_gcc_bebbo, ["{gcc_bebbo}-make*"]),
     ("fs-uae", phase_fs_uae, ["{fsuae}-make*"]),
+    ("amiberry", phase_amiberry, ["{amiberry}-make*"]),
     (
         "compressors",
         phase_compressors,
@@ -592,6 +657,7 @@ if __name__ == "__main__":
         **PACKAGE_VARS,
         binutils="binutils-gdb",
         fsuae="fs-uae",
+        amiberry="amiberry",
         gcc="gcc-2.95.3",
         gcc_bebbo="gcc-bebbo",
         target="m68k-amigaos",

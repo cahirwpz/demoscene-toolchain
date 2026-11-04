@@ -82,6 +82,21 @@ def find_executable(name):
 
 
 @fill_in_args
+def require_packages(*packages):
+  """On Debian-based systems, verify required dev packages are installed."""
+  if not exists('/etc/debian_version'):
+    return
+  res = subprocess.run(['dpkg-query', '-W', '-f=${Package} ${Status}\n'] + list(packages),
+                       stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+  installed = {line.split()[0] for line in res.stdout.splitlines()
+               if len(line.split()) >= 4 and line.split()[1:] == ['install', 'ok', 'installed']}
+  missing = [p for p in packages if p not in installed]
+  if missing:
+    panic('Missing packages: %s\nRun: sudo apt-get install %s',
+          ' '.join(missing), ' '.join(missing))
+
+
+@fill_in_args
 def find(root, **kwargs):
   only_files = kwargs.get('only_files', False)
   include = kwargs.get('include', ['*'])
@@ -494,5 +509,5 @@ def require_header(headers, lang='c', errmsg='', symbol=None, value=None):
 __all__ = ['setvar', 'panic', 'find_executable', 'chmod', 'execute', 'rmtree',
            'mkdir', 'copy', 'copytree', 'fetch', 'cwd', 'symlink', 'remove',
            'move', 'find', 'textfile', 'env', 'path', 'recipe', 'unpack',
-           'patch', 'configure', 'make', 'require_header', 'touch',
-           'exists', 'join', 'relpath']
+           'patch', 'configure', 'make', 'require_header', 'require_packages',
+           'touch', 'exists', 'join', 'relpath']

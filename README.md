@@ -6,17 +6,9 @@
 
 ## Building
 
-Supported host: Ubuntu 26.04 (x86-64). Install the build dependencies:
-
-```sh
-sudo apt install --no-install-recommends \
-     automake autoconf bison ca-certificates flex gcc g++ gettext git gperf \
-     libc6-dev libglib2.0-dev libncurses-dev libopenal-dev libpng-dev \
-     libsdl2-dev libsdl2-ttf-dev libtool make patch perl pkg-config python3 \
-     python3-dev python3-venv quilt texinfo zip
-```
-
-Only the listed packages are required; recommended packages are not needed.
+Supported host: Ubuntu 26.04 (x86-64). Install the packages listed by the
+`apt-get install` command in [`Dockerfile`](Dockerfile); recommended packages
+are not needed.
 
 Clone with submodules and build (default prefix is `./m68k-amigaos`).
 `source activate` sets up the Python venv in `.venv`; the script requires it:

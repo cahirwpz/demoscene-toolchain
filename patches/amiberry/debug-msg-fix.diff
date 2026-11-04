@@ -1,0 +1,18 @@
+Report the PC of a triggered breakpoint instead of its index.
+
+The breakpoint-hit message in debug() prints "Breakpoint at %x" (the PC)
+rather than "Breakpoint %d triggered" (the breakpoint number).
+
+Index: demoscene-toolchain/submodules/amiberry/src/debug.cpp
+===================================================================
+--- demoscene-toolchain.orig/submodules/amiberry/src/debug.cpp
++++ demoscene-toolchain/submodules/amiberry/src/debug.cpp
+@@ -8812,7 +8812,7 @@ void debug (void)
+ 				return;
+ 			}
+ 			if (bpnum >= 0) {
+-				console_out_f(_T("Breakpoint %d triggered.\n"), bpnum);
++				console_out_f(_T("Breakpoint at %x\n"), pc);
+ #ifdef AMIBERRY
+ 				// Only for the native stop that IPC reads; a GDB client keeps
+ 				// the plain S05 reply it got before.

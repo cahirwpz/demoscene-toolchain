@@ -9,3 +9,8 @@
 - **Stamps in `.build-m68k/stamps/` never invalidate.** `CC`/`CFLAGS` are fixed
   at configure time, so after changing a component's flags delete its
   `.build-m68k/build/<component>` dir and its `<component>-configure` stamp.
+- **Build one component:** `./toolchain-m68k.py build <component>` (listed by
+  `--help`); assumes its dependencies are already built.
+- **Rebuild one component:** `./toolchain-m68k.py rebuild <component>` deletes
+  the make/install stamps listed for it in `BUILD_PHASES` and reruns
+  `build <component>`; configure is kept. List new make/install steps there too.

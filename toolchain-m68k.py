@@ -12,489 +12,609 @@ import logging
 import platform
 import sys
 
-environ['DONTWRITEBYTECODE'] = 'y'
-
-URLS = \
-  ['https://ftp.gnu.org/gnu/m4/m4-1.4.17.tar.gz',
-   'https://ftp.gnu.org/gnu/gawk/gawk-3.1.8.tar.gz',
-   'https://ftp.gnu.org/gnu/autoconf/autoconf-2.13.tar.gz',
-   'https://ftp.gnu.org/gnu/bison/bison-1.35.tar.gz',
-   'https://ftp.gnu.org/gnu/texinfo/texinfo-4.12.tar.gz',
-   'https://ftp.gnu.org/gnu/automake/automake-1.15.tar.gz',
-   'https://gcc.gnu.org/pub/gcc/infrastructure/gmp-6.2.1.tar.bz2',
-   'https://gcc.gnu.org/pub/gcc/infrastructure/mpfr-3.1.6.tar.bz2',
-   'https://gcc.gnu.org/pub/gcc/infrastructure/mpc-1.0.3.tar.gz',
-   'https://gcc.gnu.org/pub/gcc/infrastructure/isl-0.18.tar.bz2',
-   ('https://github.com/askeksa/Shrinkler/archive/refs/tags/v4.7.tar.gz',
-    'Shrinkler-4.7.tar.gz'),
-   ('https://github.com/emmanuel-marty/salvador/archive/refs/tags/1.4.2.tar.gz',
-    'salvador-1.4.2.tar.gz'),
-   ('https://github.com/emmanuel-marty/lzsa/archive/refs/tags/1.4.1.tar.gz',
-    'lzsa-1.4.1.tar.gz'),
-   'https://ftp.gnu.org/old-gnu/gnu-0.2/src/flex-2.5.4.tar.gz',
-   ('https://aminet.net/dev/misc/NDK3.2.lha', 'NDK3.2R4.lha',
-    '96cabd4ad683dced632e147bf86dee0f50dcb1254386216c25c362916a6409bb'),
-   'http://phoenix.owl.de/tags/vasm2_0f.tar.gz']
+from common import chmod, configure, copy, copytree, cwd, env, execute, exists, fetch
+from common import fill_in, find, find_executable, join, make, mkdir, move, panic, patch
+from common import path, recipe, remove, require_header, rmtree, setvar, textfile, touch
+from common import unpack
+from packages import PACKAGES, PACKAGE_VARS, resolve_package
 
 
-from common import (setvar, execute, rmtree, configure, unpack, path, panic,
-        mkdir, env, make, touch, patch, require_header, copy, cwd, recipe,
-        find_executable, textfile, chmod, copytree, move, find, fetch)
-
-
-@recipe('target-prepare')
+@recipe("target-prepare")
 def prepare_target():
-  info('preparing target')
+    info("preparing target")
 
-  with cwd('{prefix}'):
-    mkdir('bin', 'etc', '{target}')
-  with cwd('{prefix}/{target}'):
-    mkdir('bin', 'ndk/include/inline', 'ndk/include/lvo',
-          'ndk/lib', 'ndk/lib/fd', 'ndk/lib/sfd')
+    with cwd("{prefix}"):
+        mkdir("bin", "etc", "{target}")
+    with cwd("{prefix}/{target}"):
+        mkdir(
+            "bin",
+            "ndk/include/inline",
+            "ndk/include/lvo",
+            "ndk/lib",
+            "ndk/lib/fd",
+            "ndk/lib/sfd",
+        )
 
 
-@recipe('{vasm}-install')
+@recipe("{vasm}-install")
 def install_vasm():
-  info('installing vasm')
+    info("installing vasm")
 
-  copy('{build}/{vasm}/vasmm68k_mot', '{prefix}/{target}/bin')
-  vasm = textfile(
-    '#!/bin/sh',
-    '',
-    '{prefix}/{target}/bin/vasmm68k_mot -I{prefix}/{target}/ndk/include "$@"')
-  chmod(vasm, 0o755)
-  move(vasm, '{prefix}/bin/vasm')
+    copy("{build}/{vasm}/vasmm68k_mot", "{prefix}/{target}/bin")
+    vasm = textfile(
+        "#!/bin/sh",
+        "",
+        '{prefix}/{target}/bin/vasmm68k_mot -I{prefix}/{target}/ndk/include "$@"',
+    )
+    chmod(vasm, 0o755)
+    move(vasm, "{prefix}/bin/vasm")
 
 
-@recipe('{NDK}-install')
+@recipe("{NDK}-install")
 def install_ndk():
-  info('installing ndk')
+    info("installing ndk")
 
-  # NDK 3.2 ships GCC proto/ and inline/ headers and lvo/ files.
-  copytree('{sources}/{NDK}/Include_H', '{prefix}/{target}/ndk/include')
-  copytree('{sources}/{NDK}/Include_I', '{prefix}/{target}/ndk/include')
-  copytree('{sources}/{NDK}/FD', '{prefix}/{target}/ndk/lib/fd')
-  copytree('{sources}/{NDK}/SFD', '{prefix}/{target}/ndk/lib/sfd')
-  copytree('{sources}/{NDK}/lib', '{prefix}/{target}/ndk/lib',
-           exclude=['README'])
-  copytree('{sources}/{NDK}/Autodocs', '{prefix}/{target}/ndk/doc')
+    # NDK 3.2 ships GCC proto/ and inline/ headers and lvo/ files.
+    copytree("{sources}/{NDK}/Include_H", "{prefix}/{target}/ndk/include")
+    copytree("{sources}/{NDK}/Include_I", "{prefix}/{target}/ndk/include")
+    copytree("{sources}/{NDK}/FD", "{prefix}/{target}/ndk/lib/fd")
+    copytree("{sources}/{NDK}/SFD", "{prefix}/{target}/ndk/lib/sfd")
+    copytree("{sources}/{NDK}/lib", "{prefix}/{target}/ndk/lib", exclude=["README"])
+    copytree("{sources}/{NDK}/Autodocs", "{prefix}/{target}/ndk/doc")
 
 
-@recipe('shrinkler-install')
+@recipe("shrinkler-install")
 def install_shrinkler():
-  info('installing shrinkler')
+    info("installing shrinkler")
 
-  copy('{build}/{shrinkler}/build/native/Shrinkler', '{prefix}/bin/Shrinkler')
+    copy("{build}/{shrinkler}/build/native/Shrinkler", "{prefix}/bin/Shrinkler")
 
 
-@recipe('salvador-install')
+@recipe("salvador-install")
 def install_salvador():
-  info('installing salvador')
+    info("installing salvador")
 
-  copy('{build}/{salvador}/salvador', '{prefix}/bin/salvador')
+    copy("{build}/{salvador}/salvador", "{prefix}/bin/salvador")
 
 
-@recipe('lzsa-install')
+@recipe("lzsa-install")
 def install_lzsa():
-  info('installing lzsa')
+    info("installing lzsa")
 
-  copy('{build}/{lzsa}/lzsa', '{prefix}/bin/lzsa')
+    copy("{build}/{lzsa}/lzsa", "{prefix}/bin/lzsa")
 
 
-@recipe('fs-uae-bootstrap')
+@recipe("fs-uae-bootstrap")
 def fs_uae_bootstrap():
-  info('bootstrapping fs-uae')
+    info("bootstrapping fs-uae")
 
-  with cwd('{submodules}/{fsuae}'):
-    execute('sh', 'bootstrap')
+    with cwd("{submodules}/{fsuae}"):
+        execute("sh", "bootstrap")
 
 
 def update_autotools(dst):
-  copy('{sources}/{automake}/lib/config.guess', path.join(dst, 'config.guess'))
-  copy('{sources}/{automake}/lib/config.sub', path.join(dst, 'config.sub'))
+    copy("{sources}/{automake}/lib/config.guess", join(dst, "config.guess"))
+    copy("{sources}/{automake}/lib/config.sub", join(dst, "config.sub"))
 
 
 def touch_genfiles(dst):
-  """
-  For binutils and gcc we want to make sure C source & headers file doesn't get
-  regenerated. Otherwise it can cause weird errors later in the build process
-  (e.g. in ldexp.c:560)
-  """
-  for name in find(dst, include=['*.l', '*.y']):
-    basename = path.splitext(name)[0]
-    for c_file in glob(basename + '.c'):
-      touch(c_file)
-    for h_file in glob(basename + '.h'):
-      touch(h_file)
+    """
+    For binutils and gcc we want to make sure C source & headers file doesn't get
+    regenerated. Otherwise it can cause weird errors later in the build process
+    (e.g. in ldexp.c:560)
+    """
+    for name in find(dst, include=["*.l", "*.y"]):
+        basename = path.splitext(name)[0]
+        for c_file in glob(basename + ".c"):
+            touch(c_file)
+        for h_file in glob(basename + ".h"):
+            touch(h_file)
 
 
 def download():
-  with cwd('{archives}'):
-    for url in URLS:
-      sha256 = None
-      if type(url) is tuple:
-        url, name, sha256 = (url + (None,))[:3]
-      else:
-        name = path.basename(url)
-      fetch(name, url)
-      if sha256 is not None:
-        with open(name, 'rb') as f:
-          digest = hashlib.sha256(f.read()).hexdigest()
-        if digest != sha256:
-          panic('"%s" has SHA-256 %s, expected %s!', name, digest, sha256)
+    with cwd("{archives}"):
+        for pkg in PACKAGES:
+            _, url, archive = resolve_package(pkg)
+            fetch(archive, url)
+            if pkg.sha256 is not None:
+                with open(archive, "rb") as f:
+                    digest = hashlib.sha256(f.read()).hexdigest()
+                if digest != pkg.sha256:
+                    panic(
+                        '"%s" has SHA-256 %s, expected %s!', archive, digest, pkg.sha256
+                    )
 
-  execute('git', 'submodule', 'init');
-  execute('git', 'submodule', 'update');
+    execute("git", "submodule", "init")
+    execute("git", "submodule", "update")
 
 
-def build():
-  for var in list(environ.keys()):
-    if var not in ['_', 'LOGNAME', 'HOME', 'SHELL', 'TMPDIR', 'PWD']:
-      del environ[var]
+def prepare_build_env():
+    for var in list(environ.keys()):
+        if var not in ["_", "LOGNAME", "HOME", "SHELL", "TMPDIR", "PWD"]:
+            del environ[var]
 
-  PATHS = ['/usr/bin', '/bin']
+    PATHS = ["/usr/bin", "/bin"]
 
-  """
+    """
   Make sure we always choose known compiler (from the distro) and not one in
   user's path that could shadow the original one.
   """
-  if platform.system() == 'Darwin':
-    CC, CXX = 'clang', 'clang++'
-    PATHS.append('/usr/local/bin')
-    PATHS.append('/usr/local/opt/gettext/bin')
-  else:
-    CC, CXX = 'gcc', 'g++'
+    if platform.system() == "Darwin":
+        CC, CXX = "clang", "clang++"
+        PATHS.append("/usr/local/bin")
+        PATHS.append("/usr/local/opt/gettext/bin")
+    else:
+        CC, CXX = "gcc", "g++"
 
-  if fnmatch(platform.system(), 'MSYS_NT*'):
-    PATHS.append('/usr/bin/core_perl')  # pod2text, pod2man
+    if fnmatch(platform.system(), "MSYS_NT*"):
+        PATHS.append("/usr/bin/core_perl")  # pod2text, pod2man
 
-  PATH = ':'.join(PATHS)
+    PATH = ":".join(PATHS)
 
-  environ['PATH'] = PATH
-  environ['LANG'] = 'C'
-  environ['TERM'] = 'xterm'
+    environ["PATH"] = PATH
+    environ["LANG"] = "C"
+    environ["TERM"] = "xterm"
 
-  CC = find_executable(CC)
-  CXX = find_executable(CXX)
-  FLAGS = '-s -O2 -pipe'
+    CC = find_executable(CC)
+    CXX = find_executable(CXX)
+    FLAGS = "-s -O2 -pipe"
 
-  if getLogger().isEnabledFor(logging.DEBUG):
-    FLAGS += ' -Wall'
-  else:
-    FLAGS += ' -w'
-    environ['MAKEFLAGS'] = '--silent'
+    if getLogger().isEnabledFor(logging.DEBUG):
+        FLAGS += " -Wall"
+    else:
+        FLAGS += " -w"
+        environ["MAKEFLAGS"] = "--silent"
 
-  environ['CC'] = CC
-  environ['CXX'] = CXX
-  environ['PATH'] = ':'.join([path.join('{prefix}', 'bin'),
-                              path.join('{host}', 'bin'),
-                              PATH])
+    environ["CC"] = CC
+    environ["CXX"] = CXX
+    environ["PATH"] = ":".join([join("{prefix}", "bin"), join("{host}", "bin"), PATH])
 
-  setvar(cc=environ['CC'], cxx=environ['CXX'])
+    setvar(cc=environ["CC"], cxx=environ["CXX"], flags=FLAGS, path=PATH)
 
-  """
+    """
   When we have a working compiler in our path, we shoule also check if the
   required programs, headers and libraries are present.
   """
 
-  find_executable('perl')
-  find_executable('pod2man')
-  find_executable('gperf')
-  find_executable('patch')
-  find_executable('make')
-  find_executable('makeinfo')
-  find_executable('git')
-  find_executable('yacc')
+    find_executable("perl")
+    find_executable("pod2man")
+    find_executable("gperf")
+    find_executable("patch")
+    find_executable("make")
+    find_executable("makeinfo")
+    find_executable("git")
+    find_executable("yacc")
 
-  require_header(['ncurses.h', 'ncurses/ncurses.h'],
-                 lang='c', errmsg='libncurses-dev package missing')
+    require_header(
+        ["ncurses.h", "ncurses/ncurses.h"],
+        lang="c",
+        errmsg="libncurses-dev package missing",
+    )
 
-  download()
-  # Make sure the command does not output an error when you commit the patches
-  execute('quilt', 'push', '-a', ignore_errors=True)
 
-  unpack('{automake}')
+def phase_download():
+    download()
+    # Make sure the command does not output an error when you commit the patches
+    execute("quilt", "push", "-a", ignore_errors=True)
 
-  """
-  Legacy host tools (and gcc 2.95.3 below) predate C23 and the stricter
-  diagnostics of gcc >= 14 (implicit declarations, K&R prototypes). This also
-  covers gmp, whose configure probes call K&R-declared functions.
-  """
-  CCLEGACY = ' '.join([CC, '-std=gnu17'])
 
-  with env(CC=CCLEGACY):
-    unpack('{m4}')
-    patch('{m4}')
-    configure('{m4}', '--prefix={host}')
-    make('{m4}', parallel=True)
-    make('{m4}', 'install')
+# Legacy host tools (and gcc 2.95.3 below) predate C23 and the stricter
+# diagnostics of gcc >= 14 (implicit declarations, K&R prototypes). This also
+# covers gmp, whose configure probes call K&R-declared functions.
+CCLEGACY = "{cc} -std=gnu17"
 
-    unpack('{gawk}')
-    update_autotools('{sources}/{gawk}')
-    patch('{gawk}')
-    configure('{gawk}', '--prefix={host}')
-    make('{gawk}', parallel=True)
-    make('{gawk}', 'install')
 
-    unpack('{flex}')
-    patch('{flex}')
-    # flex calls exit() without including <stdlib.h>
-    with env(CC=CCLEGACY + ' -Wno-error=implicit-function-declaration'):
-      configure('{flex}', '--prefix={host}')
-      make('{flex}')
-      make('{flex}', 'install')
+def phase_host_tools():
+    unpack("{automake}")
 
-    unpack('{bison}')
-    update_autotools('{sources}/{bison}/config')
-    patch('{bison}')
-    configure('{bison}', '--prefix={host}')
-    make('{bison}', parallel=True)
-    make('{bison}', 'install')
+    with env(CC=CCLEGACY):
+        unpack("{m4}")
+        patch("{m4}")
+        configure("{m4}", "--prefix={host}")
+        make("{m4}", parallel=True)
+        make("{m4}", "install")
 
-    unpack('{texinfo}')
-    patch('{texinfo}')
-    update_autotools('{sources}/{texinfo}/build-aux')
-    configure('{texinfo}', '--prefix={host}')
-    make('{texinfo}', parallel=True)
-    make('{texinfo}', 'install')
+        unpack("{gawk}")
+        update_autotools("{sources}/{gawk}")
+        patch("{gawk}")
+        configure("{gawk}", "--prefix={host}")
+        make("{gawk}", parallel=True)
+        make("{gawk}", "install")
 
-    unpack('{autoconf}')
-    update_autotools('{sources}/{autoconf}')
-    configure('{autoconf}', '--prefix={host}')
-    make('{autoconf}', parallel=True)
-    make('{autoconf}', 'install')
+        unpack("{flex}")
+        patch("{flex}")
+        # flex calls exit() without including <stdlib.h>
+        with env(CC=CCLEGACY + " -Wno-error=implicit-function-declaration"):
+            configure("{flex}", "--prefix={host}")
+            make("{flex}")
+            make("{flex}", "install")
 
-    unpack('{gmp}')
-    configure('{gmp}',
-              '--prefix={host}',
-              '--disable-shared',
-              '--enable-static')
-    make('{gmp}', parallel=True)
-    make('{gmp}', 'install')
+        unpack("{bison}")
+        update_autotools("{sources}/{bison}/config")
+        patch("{bison}")
+        configure("{bison}", "--prefix={host}")
+        make("{bison}", parallel=True)
+        make("{bison}", "install")
 
-  unpack('{mpfr}')
-  configure('{mpfr}',
-            '--prefix={host}',
-            '--with-gmp={host}',
-            '--disable-shared',
-            '--enable-static')
-  make('{mpfr}', parallel=True)
-  make('{mpfr}', 'install')
+        unpack("{texinfo}")
+        patch("{texinfo}")
+        update_autotools("{sources}/{texinfo}/build-aux")
+        configure("{texinfo}", "--prefix={host}")
+        make("{texinfo}", parallel=True)
+        make("{texinfo}", "install")
 
-  unpack('{mpc}')
-  configure('{mpc}',
-            '--prefix={host}',
-            '--with-gmp={host}',
-            '--with-mpfr={host}',
-            '--disable-shared',
-            '--enable-static')
-  make('{mpc}', parallel=True)
-  make('{mpc}', 'install')
+        unpack("{autoconf}")
+        update_autotools("{sources}/{autoconf}")
+        configure("{autoconf}", "--prefix={host}")
+        make("{autoconf}", parallel=True)
+        make("{autoconf}", "install")
 
-  unpack('{isl}')
-  configure('{isl}',
-            '--prefix={host}',
-            '--with-gmp-prefix={host}',
-            '--disable-shared',
-            '--enable-static')
-  make('{isl}', parallel=True)
-  make('{isl}', 'install')
 
-  prepare_target()
+def phase_gcc_deps():
+    with env(CC=CCLEGACY):
+        unpack("{gmp}")
+        configure("{gmp}", "--prefix={host}", "--disable-shared", "--enable-static")
+        make("{gmp}", parallel=True)
+        make("{gmp}", "install")
 
-  unpack('{vasm}', work_dir='{build}', top_dir='vasm')
-  make('{vasm}', CPU='m68k', SYNTAX='mot')
-  install_vasm()
+    unpack("{mpfr}")
+    configure(
+        "{mpfr}",
+        "--prefix={host}",
+        "--with-gmp={host}",
+        "--disable-shared",
+        "--enable-static",
+    )
+    make("{mpfr}", parallel=True)
+    make("{mpfr}", "install")
 
-  unpack('{NDK}', top_dir='.')
-  patch('{NDK}')
-  install_ndk()
+    unpack("{mpc}")
+    configure(
+        "{mpc}",
+        "--prefix={host}",
+        "--with-gmp={host}",
+        "--with-mpfr={host}",
+        "--disable-shared",
+        "--enable-static",
+    )
+    make("{mpc}", parallel=True)
+    make("{mpc}", "install")
 
-  with env(CC=CC, CXX=CXX, CFLAGS=FLAGS, CXXFLAGS=FLAGS, PATH=PATH):
-    configure('{binutils}',
-              '--prefix={prefix}',
-              '--infodir={prefix}/{target}/info',
-              '--mandir={prefix}/share/man',
-              '--disable-nls',
-              '--disable-plugins',
-              '--disable-werror',
-              '--disable-tui',
-              '--with-libgmp-prefix={host}',
-              '--with-python=' + sys.executable,
-              '--target=m68k-amigaos',
-              from_dir='{submodules}/{binutils}')
-    touch_genfiles('{submodules}/{binutils}')
-    make('{binutils}', 'configure-gdb')
-    make('{binutils}', 'all-bfd', parallel=True)
-    make('{binutils}', 'all-binutils', parallel=True)
-    make('{binutils}', 'all-gas', parallel=True)
-    make('{binutils}', 'all-ld', parallel=True)
-    make('{binutils}', 'all-gdb', parallel=True)
-    make('{binutils}', 'install-binutils')
-    make('{binutils}', 'install-gas')
-    make('{binutils}', 'install-ld')
-    make('{binutils}', 'install-gdb')
+    unpack("{isl}")
+    configure(
+        "{isl}",
+        "--prefix={host}",
+        "--with-gmp-prefix={host}",
+        "--disable-shared",
+        "--enable-static",
+    )
+    make("{isl}", parallel=True)
+    make("{isl}", "install")
 
-  # gcc >= 14 turned these into errors; gcc 2.95.3 sources trip all three.
-  CCOLD = ' '.join([CC, '-std=gnu99',
-                    '-Wno-error=implicit-int',
-                    '-Wno-error=implicit-function-declaration',
-                    '-Wno-error=incompatible-pointer-types'])
-  CXXOLD = ' '.join([CXX, '-std=gnu++11'])
 
-  with env(CC=CCOLD, CXX=CXXOLD, CFLAGS=FLAGS, CXXFLAGS=FLAGS):
-    configure('{gcc}',
-              '--prefix={prefix}',
-              '--infodir={prefix}/{target}/info',
-              '--mandir={prefix}/share/man',
-              '--host=i686-linux-gnu',
-              '--build=i686-linux-gnu',
-              '--target=m68k-amigaos',
-              '--enable-languages=c',
-              '--enable-version-specific-runtime-libs',
-              from_dir='{submodules}/{gcc}')
-    touch_genfiles('{submodules}/{gcc}')
-    touch('{submodules}/{gcc}/gcc/c-parse.gperf')
-    touch('{submodules}/{gcc}/gcc/configure')
-    # parallel build fails for all-gcc
-    make('{gcc}', 'all-gcc', MAKEINFO='makeinfo')
-    make('{gcc}', 'install-gcc', MAKEINFO='makeinfo')
+def phase_target():
+    prepare_target()
 
-  with env(CC=CC, CXX=CXX, CFLAGS=FLAGS, CXXFLAGS=FLAGS):
-    configure('{gcc_bebbo}',
-              '--prefix={prefix}',
-              '--infodir={prefix}/{target}/info',
-              '--mandir={prefix}/share/man',
-              '--program-prefix=m68k-amigaos-',
-              '--program-suffix=-6.5.0b',
-              '--with-gmp={host}',
-              '--with-mpfr={host}',
-              '--with-mpc={host}',
-              '--with-isl={host}',
-              '--target=m68k-amigaos',
-              '--enable-languages=c',
-              '--enable-version-specific-runtime-libs',
-              '--disable-nls',
-              '--disable-libssp',
-              from_dir='{submodules}/{gcc_bebbo}')
-    make('{gcc_bebbo}', 'all-gcc', parallel=True)
-    make('{gcc_bebbo}', 'install-gcc')
+    unpack("{vasm}", work_dir="{build}", top_dir="vasm")
+    make("{vasm}", CPU="m68k", SYNTAX="mot")
+    install_vasm()
 
-  with env(CC=CC, CXX=CXX, CFLAGS=FLAGS, CXXFLAGS=FLAGS, PATH=PATH):
-    fs_uae_bootstrap()
-    configure('{fsuae}',
-              '--prefix={prefix}',
-              '--enable-gdbstub',
-              '--without-libmpeg2',
-              '--disable-action-replay',
-              '--disable-ahi',
-              '--disable-builtin-slirp',
-              '--disable-gfxboard',
-              '--disable-jit',
-              '--disable-lua',
-              '--disable-netplay',
-              '--disable-pearpc-cpu',
-              '--disable-ppc',
-              '--disable-prowizard',
-              '--disable-slirp',
-              '--disable-qemu-cpu',
-              '--disable-qemu-slirp',
-              '--disable-uaescsi',
-              '--disable-uaeserial',
-              '--disable-dms',
-              '--disable-zip',
-              from_dir='{submodules}/{fsuae}')
-    make('{fsuae}', parallel=True)
-    make('{fsuae}', 'install')
+    unpack("{NDK}", top_dir=".")
+    patch("{NDK}")
+    install_ndk()
 
-  unpack('{shrinkler}', work_dir='{build}')
-  make('{shrinkler}')
-  install_shrinkler()
 
-  unpack('{salvador}', work_dir='{build}')
-  make('{salvador}', CC='gcc')
-  install_salvador()
+def phase_binutils():
+    with env(
+        CC="{cc}", CXX="{cxx}", CFLAGS="{flags}", CXXFLAGS="{flags}", PATH="{path}"
+    ):
+        configure(
+            "{binutils}",
+            "--prefix={prefix}",
+            "--infodir={prefix}/{target}/info",
+            "--mandir={prefix}/share/man",
+            "--disable-nls",
+            "--disable-plugins",
+            "--disable-werror",
+            "--disable-tui",
+            "--with-libgmp-prefix={host}",
+            "--with-python=" + sys.executable,
+            "--target=m68k-amigaos",
+            from_dir="{submodules}/{binutils}",
+        )
+        touch_genfiles("{submodules}/{binutils}")
+        make("{binutils}", "configure-gdb")
+        make("{binutils}", "all-bfd", parallel=True)
+        make("{binutils}", "all-binutils", parallel=True)
+        make("{binutils}", "all-gas", parallel=True)
+        make("{binutils}", "all-ld", parallel=True)
+        make("{binutils}", "all-gdb", parallel=True)
+        make("{binutils}", "install-binutils")
+        make("{binutils}", "install-gas")
+        make("{binutils}", "install-ld")
+        make("{binutils}", "install-gdb")
 
-  unpack('{lzsa}', work_dir='{build}')
-  make('{lzsa}', CC='gcc')
-  install_lzsa()
+
+def phase_gcc():
+    # gcc >= 14 turned these into errors; gcc 2.95.3 sources trip all three.
+    with env(
+        CC=" ".join(
+            [
+                "{cc}",
+                "-std=gnu99",
+                "-Wno-error=implicit-int",
+                "-Wno-error=implicit-function-declaration",
+                "-Wno-error=incompatible-pointer-types",
+            ]
+        ),
+        CXX="{cxx} -std=gnu++11",
+        CFLAGS="{flags}",
+        CXXFLAGS="{flags}",
+    ):
+        configure(
+            "{gcc}",
+            "--prefix={prefix}",
+            "--infodir={prefix}/{target}/info",
+            "--mandir={prefix}/share/man",
+            "--host=i686-linux-gnu",
+            "--build=i686-linux-gnu",
+            "--target=m68k-amigaos",
+            "--enable-languages=c",
+            "--enable-version-specific-runtime-libs",
+            from_dir="{submodules}/{gcc}",
+        )
+        touch_genfiles("{submodules}/{gcc}")
+        touch("{submodules}/{gcc}/gcc/c-parse.gperf")
+        touch("{submodules}/{gcc}/gcc/configure")
+        # parallel build fails for all-gcc
+        make("{gcc}", "all-gcc", MAKEINFO="makeinfo")
+        make("{gcc}", "install-gcc", MAKEINFO="makeinfo")
+
+
+def phase_gcc_bebbo():
+    with env(CC="{cc}", CXX="{cxx}", CFLAGS="{flags}", CXXFLAGS="{flags}"):
+        configure(
+            "{gcc_bebbo}",
+            "--prefix={prefix}",
+            "--infodir={prefix}/{target}/info",
+            "--mandir={prefix}/share/man",
+            "--program-prefix=m68k-amigaos-",
+            "--program-suffix=-6.5.0b",
+            "--with-gmp={host}",
+            "--with-mpfr={host}",
+            "--with-mpc={host}",
+            "--with-isl={host}",
+            "--target=m68k-amigaos",
+            "--enable-languages=c",
+            "--enable-version-specific-runtime-libs",
+            "--disable-nls",
+            "--disable-libssp",
+            from_dir="{submodules}/{gcc_bebbo}",
+        )
+        make("{gcc_bebbo}", "all-gcc", parallel=True)
+        make("{gcc_bebbo}", "install-gcc")
+
+
+def phase_fs_uae():
+    with env(
+        CC="{cc}", CXX="{cxx}", CFLAGS="{flags}", CXXFLAGS="{flags}", PATH="{path}"
+    ):
+        fs_uae_bootstrap()
+        configure(
+            "{fsuae}",
+            "--prefix={prefix}",
+            "--enable-gdbstub",
+            "--without-libmpeg2",
+            "--disable-action-replay",
+            "--disable-ahi",
+            "--disable-builtin-slirp",
+            "--disable-gfxboard",
+            "--disable-jit",
+            "--disable-lua",
+            "--disable-netplay",
+            "--disable-pearpc-cpu",
+            "--disable-ppc",
+            "--disable-prowizard",
+            "--disable-slirp",
+            "--disable-qemu-cpu",
+            "--disable-qemu-slirp",
+            "--disable-uaescsi",
+            "--disable-uaeserial",
+            "--disable-dms",
+            "--disable-zip",
+            from_dir="{submodules}/{fsuae}",
+        )
+        make("{fsuae}", parallel=True)
+        make("{fsuae}", "install")
+
+
+def phase_compressors():
+    unpack("{shrinkler}", work_dir="{build}")
+    make("{shrinkler}")
+    install_shrinkler()
+
+    unpack("{salvador}", work_dir="{build}")
+    make("{salvador}", CC="gcc")
+    install_salvador()
+
+    unpack("{lzsa}", work_dir="{build}")
+    make("{lzsa}", CC="gcc")
+    install_lzsa()
+
+
+# Ordered build phases. `build` with no arguments runs them all in order; named
+# arguments (e.g. "build fs-uae") run only those phases, assuming their
+# dependencies were already built. Stamps still gate the steps inside each phase.
+# The third field lists the stamps "rebuild <component>" deletes: the make and
+# install steps of everything the phase compiles (not configure/unpack).
+BUILD_PHASES = [
+    ("download", phase_download, []),
+    (
+        "host-tools",
+        phase_host_tools,
+        [
+            "{m4}-make*",
+            "{gawk}-make*",
+            "{flex}-make*",
+            "{bison}-make*",
+            "{texinfo}-make*",
+            "{autoconf}-make*",
+        ],
+    ),
+    (
+        "gcc-deps",
+        phase_gcc_deps,
+        ["{gmp}-make*", "{mpfr}-make*", "{mpc}-make*", "{isl}-make*"],
+    ),
+    ("target", phase_target, ["{vasm}-make*", "{vasm}-install", "{NDK}-install"]),
+    ("binutils", phase_binutils, ["{binutils}-make*"]),
+    ("gcc", phase_gcc, ["{gcc}-make*"]),
+    ("gcc-bebbo", phase_gcc_bebbo, ["{gcc_bebbo}-make*"]),
+    ("fs-uae", phase_fs_uae, ["{fsuae}-make*"]),
+    (
+        "compressors",
+        phase_compressors,
+        [
+            "{shrinkler}-make*",
+            "shrinkler-install",
+            "{salvador}-make*",
+            "salvador-install",
+            "{lzsa}-make*",
+            "lzsa-install",
+        ],
+    ),
+]
+
+
+def _component_names():
+    return [name for name, _, _ in BUILD_PHASES]
+
+
+def _validate_components(names):
+    available = _component_names()
+    unknown = [n for n in names if n not in available]
+    if unknown:
+        panic(
+            "unknown build component(s): %s; available: %s",
+            ", ".join(unknown),
+            ", ".join(available),
+        )
+    return available
+
+
+def build(*names):
+    available = _validate_components(names)
+    selected = set(names) if names else set(available)
+    prepare_build_env()
+    for name, fn, _ in BUILD_PHASES:
+        if name in selected:
+            fn()
+
+
+def rebuild(*names):
+    rebuildable = [name for name, _, stamps in BUILD_PHASES if stamps]
+    if not names:
+        panic(
+            "rebuild requires at least one build component; available: %s",
+            ", ".join(rebuildable),
+        )
+    _validate_components(names)
+    fixed = [n for n in names if n not in rebuildable]
+    if fixed:
+        panic(
+            "nothing to rebuild in: %s; available: %s",
+            ", ".join(fixed),
+            ", ".join(rebuildable),
+        )
+    for name, _, stamps in BUILD_PHASES:
+        if name in names:
+            for pattern in stamps:
+                # Same name mangling as the recipe decorator applies to stamps.
+                stamp = fill_in(pattern).replace("_", "-").replace("/", "-")
+                remove(glob(join("{stamps}", stamp)))
+    build(*names)
 
 
 def clean():
-  rmtree('{stamps}')
-  rmtree('{sources}')
-  rmtree('{host}')
-  rmtree('{build}')
-  rmtree('{tmpdir}')
-  execute('quilt', 'pop', '-a', ignore_errors=True)
+    rmtree("{stamps}")
+    rmtree("{sources}")
+    rmtree("{host}")
+    rmtree("{build}")
+    rmtree("{tmpdir}")
+    execute("quilt", "pop", "-a", ignore_errors=True)
 
 
 if __name__ == "__main__":
-  logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
+    logging.basicConfig(level=logging.DEBUG, format="%(levelname)s: %(message)s")
 
-  if not sys.version_info[:2] >= (3, 5):
-    panic('I need Python 3.5 to run!')
+    if "VIRTUAL_ENV" not in environ:
+        panic('Please run "source activate" before executing this script.')
 
-  if not any(fnmatch(platform.system(), pat)
-             for pat in ['Darwin', 'Linux', 'CYGWIN_NT*', 'MSYS_NT*']):
-    panic('Build on %s not supported!', platform.system())
+    if not sys.version_info[:2] >= (3, 11):
+        panic("I need Python 3.11 to run!")
 
-  if platform.machine() not in ['i686', 'x86_64']:
-    panic('Build on %s architecture not supported!', platform.machine())
+    if not any(
+        fnmatch(platform.system(), pat)
+        for pat in ["Darwin", "Linux", "CYGWIN_NT*", "MSYS_NT*"]
+    ):
+        panic("Build on %s not supported!", platform.system())
 
-  parser = argparse.ArgumentParser(description='Build cross toolchain.')
-  parser.add_argument('action',
-                      choices=['build', 'clean', 'download'],
-                      default='build', help='perform action')
-  parser.add_argument('args', metavar='ARGS', type=str, nargs='*',
-                      help='action arguments')
-  parser.add_argument('-q', '--quiet', action='store_true')
-  parser.add_argument('--prefix', type=str, default=None,
-                      help='installation directory')
-  args = parser.parse_args()
+    if platform.machine() not in ["i686", "x86_64"]:
+        panic("Build on %s architecture not supported!", platform.machine())
 
-  setvar(top=path.abspath(path.dirname(sys.argv[0])))
+    parser = argparse.ArgumentParser(
+        description="Build cross toolchain.",
+        epilog="build components (in order): " + ", ".join(_component_names()),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "action",
+        choices=["build", "clean", "download", "rebuild"],
+        default="build",
+        help="perform action",
+    )
+    parser.add_argument(
+        "args",
+        metavar="ARGS",
+        type=str,
+        nargs="*",
+        help="build components to (re)build (default: all); see list below",
+    )
+    parser.add_argument("-q", "--quiet", action="store_true")
+    parser.add_argument(
+        "--prefix", type=str, default=None, help="installation directory"
+    )
+    args = parser.parse_args()
 
-  setvar(m4='m4-1.4.17',
-         gawk='gawk-3.1.8',
-         flex='flex-2.5.4',
-         bison='bison-1.35',
-         automake='automake-1.15',
-         autoconf='autoconf-2.13',
-         texinfo='texinfo-4.12',
-         gmp='gmp-6.2.1',
-         mpfr='mpfr-3.1.6',
-         mpc='mpc-1.0.3',
-         isl='isl-0.18',
-         NDK='NDK3.2R4',
-         binutils='binutils-gdb',
-         fsuae='fs-uae',
-         gcc='gcc-2.95.3',
-         gcc_bebbo='gcc-bebbo',
-         shrinkler='Shrinkler-4.7',
-         salvador='salvador-1.4.2',
-         lzsa='lzsa-1.4.1',
-         vasm='vasm2_0f',
-         target='m68k-amigaos',
-         python=sys.executable,
-         patches=path.join('{top}', 'patches'),
-         stamps=path.join('{top}', '.build-m68k', 'stamps'),
-         build=path.join('{top}', '.build-m68k', 'build'),
-         sources=path.join('{top}', '.build-m68k', 'sources'),
-         host=path.join('{top}', '.build-m68k', 'host'),
-         tmpdir=path.join('{top}', '.build-m68k', 'tmp'),
-         prefix=path.join('{top}', 'm68k-amigaos'),
-         archives=path.join('{top}', '.build-m68k', 'archives'),
-         submodules=path.join('{top}', 'submodules'))
+    setvar(top=path.abspath(path.dirname(sys.argv[0])))
 
-  if args.quiet:
-    getLogger().setLevel(logging.INFO)
+    setvar(
+        **PACKAGE_VARS,
+        binutils="binutils-gdb",
+        fsuae="fs-uae",
+        gcc="gcc-2.95.3",
+        gcc_bebbo="gcc-bebbo",
+        target="m68k-amigaos",
+        python=sys.executable,
+        patches=join("{top}", "patches"),
+        stamps=join("{top}", ".build-m68k", "stamps"),
+        build=join("{top}", ".build-m68k", "build"),
+        sources=join("{top}", ".build-m68k", "sources"),
+        host=join("{top}", ".build-m68k", "host"),
+        tmpdir=join("{top}", ".build-m68k", "tmp"),
+        prefix=join("{top}", "m68k-amigaos"),
+        archives=join("{top}", ".build-m68k", "archives"),
+        submodules=join("{top}", "submodules"),
+    )
 
-  if args.prefix is not None:
-    setvar(prefix=args.prefix)
+    if args.quiet:
+        getLogger().setLevel(logging.INFO)
 
-  if not path.exists('{prefix}'):
-    mkdir('{prefix}')
+    if args.prefix is not None:
+        setvar(prefix=args.prefix)
 
-  action = args.action.replace('-', '_')
-  globals()[action].__call__(*args.args)
+    if not exists("{prefix}"):
+        mkdir("{prefix}")
+
+    action = args.action.replace("-", "_")
+    globals()[action].__call__(*args.args)

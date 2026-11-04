@@ -10,6 +10,7 @@
 .build-*/
 .pc/
 .venv/
+node_modules/
 m68k-amigaos/
 tmp/
 commodore

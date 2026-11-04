@@ -37,6 +37,9 @@ jobs:
     needs: version
     runs-on: ubuntu-26.04
     container: cahirwpz/demoscene-toolchain:ubuntu-26.04
+    defaults:
+      run:
+        shell: bash
 
     steps:
     - uses: actions/checkout@v4
@@ -46,10 +49,13 @@ jobs:
     - name: Download archives
       run: |
         git config --global --add safe.directory "$GITHUB_WORKSPACE"
-        ./toolchain-m68k --quiet download
+        source activate
+        ./toolchain-m68k.py --quiet download
 
     - name: Build toolchain
-      run: ./toolchain-m68k --quiet build --prefix=/opt/amiga
+      run: |
+        source activate
+        ./toolchain-m68k.py --quiet build --prefix=/opt/amiga
 
     - name: Build Debian package
       env:

@@ -10,7 +10,7 @@ Index: demoscene-toolchain/submodules/amiberry/src/main.cpp
 ===================================================================
 --- demoscene-toolchain.orig/submodules/amiberry/src/main.cpp
 +++ demoscene-toolchain/submodules/amiberry/src/main.cpp
-@@ -1600,6 +1600,12 @@ void setup_brkhandler (void)
+@@ -2132,6 +2132,12 @@ void setup_brkhandler (void)
  #endif
  }
  
@@ -23,7 +23,7 @@ Index: demoscene-toolchain/submodules/amiberry/src/main.cpp
  static int real_main2 (int argc, TCHAR **argv)
  {
  	set_config_changed();
-@@ -1725,8 +1731,8 @@ static int real_main2 (int argc, TCHAR *
+@@ -2258,8 +2264,8 @@ static int real_main2 (int argc, TCHAR *
  	if (graphics_init (true)) {
  #ifdef DEBUGGER
  		setup_brkhandler ();

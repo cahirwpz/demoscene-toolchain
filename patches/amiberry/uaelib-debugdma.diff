@@ -7,7 +7,7 @@ Index: demoscene-toolchain/submodules/amiberry/src/debug.cpp
 ===================================================================
 --- demoscene-toolchain.orig/submodules/amiberry/src/debug.cpp
 +++ demoscene-toolchain/submodules/amiberry/src/debug.cpp
-@@ -1883,6 +1883,25 @@ static void set_debug_colors(void)
+@@ -2020,6 +2020,25 @@ static void set_debug_colors(void)
  	set_dbg_color(DMARECORD_BLITTER,	6, 0x00, 0xff, 0x00, 0, NULL); // line A-D
  }
  
@@ -37,19 +37,19 @@ Index: demoscene-toolchain/submodules/amiberry/src/include/debug.h
 ===================================================================
 --- demoscene-toolchain.orig/submodules/amiberry/src/include/debug.h
 +++ demoscene-toolchain/submodules/amiberry/src/include/debug.h
-@@ -188,6 +188,7 @@ struct memwatch_node {
- extern struct memwatch_node mwnodes[MEMWATCH_TOTAL];
+@@ -204,6 +204,7 @@ extern struct memwatch_node mwnodes[MEMW
+ #define MW_REMOTE_EXACT 2	// match complete accesses only, compare old RAM values
  
  extern void memwatch_dump2 (TCHAR *buf, int bufsize, int num);
 +extern void debug_dma_set_mode (int mode);
- 
- void debug_getpeekdma_chipram(uaecptr addr, uae_u32 mask, int reg);
- void debug_getpeekdma_value(uae_u32);
+ extern void initialize_memwatch(int mode);
+ extern int deinitialize_memwatch(void);
+ extern void memwatch_setup (void);
 Index: demoscene-toolchain/submodules/amiberry/src/uaelib.cpp
 ===================================================================
 --- demoscene-toolchain.orig/submodules/amiberry/src/uaelib.cpp
 +++ demoscene-toolchain/submodules/amiberry/src/uaelib.cpp
-@@ -774,6 +774,15 @@ static uae_u32 emulib_WarpMode(uae_u32 m
+@@ -1098,6 +1098,15 @@ static uae_u32 emulib_WarpMode(uae_u32 m
    return 1;
  }
  
@@ -64,8 +64,8 @@ Index: demoscene-toolchain/submodules/amiberry/src/uaelib.cpp
 +
  static uae_u32 uaelib_demux_common(TrapContext *ctx, uae_u32 ARG0, uae_u32 ARG1, uae_u32 ARG2, uae_u32 ARG3, uae_u32 ARG4, uae_u32 ARG5)
  {
- 	write_log("%ld\n",ARG0);
-@@ -799,6 +808,7 @@ static uae_u32 uaelib_demux_common(TrapC
+ #ifdef AMIBERRY
+@@ -1132,6 +1141,7 @@ static uae_u32 uaelib_demux_common(TrapC
  
  		case 40: return emulib_Log(ctx, ARG1);
  		case 41: return emulib_WarpMode(ARG1);

@@ -8,7 +8,7 @@ Index: demoscene-toolchain/submodules/amiberry/src/newcpu.cpp
 ===================================================================
 --- demoscene-toolchain.orig/submodules/amiberry/src/newcpu.cpp
 +++ demoscene-toolchain/submodules/amiberry/src/newcpu.cpp
-@@ -3885,6 +3885,14 @@ uae_u32 REGPARAM2 op_illg (uae_u32 opcod
+@@ -3922,6 +3922,14 @@ uae_u32 REGPARAM2 op_illg (uae_u32 opcod
  		}
  	}
  

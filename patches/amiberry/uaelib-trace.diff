@@ -8,7 +8,7 @@ Index: demoscene-toolchain/submodules/amiberry/src/blitter.cpp
 ===================================================================
 --- demoscene-toolchain.orig/submodules/amiberry/src/blitter.cpp
 +++ demoscene-toolchain/submodules/amiberry/src/blitter.cpp
-@@ -459,6 +459,8 @@ static void blitter_done_all(bool all)
+@@ -462,6 +462,8 @@ static void blitter_done_all(bool all)
  	if (all) {
  		blitter_done_notify();
  	}
@@ -17,7 +17,7 @@ Index: demoscene-toolchain/submodules/amiberry/src/blitter.cpp
  }
  
  static void blit_chipmem_agnus_wput(uaecptr addr, uae_u32 w, uae_u32 typemask)
-@@ -2055,6 +2057,9 @@ void do_blitter(int copper, uaecptr pc)
+@@ -2065,6 +2067,9 @@ void do_blitter(int copper, uaecptr pc)
  
  	blitter_start_init();
  
@@ -31,7 +31,7 @@ Index: demoscene-toolchain/submodules/amiberry/src/disk.cpp
 ===================================================================
 --- demoscene-toolchain.orig/submodules/amiberry/src/disk.cpp
 +++ demoscene-toolchain/submodules/amiberry/src/disk.cpp
-@@ -3880,6 +3880,7 @@ static void disk_dmafinished(void)
+@@ -3885,6 +3885,7 @@ static void disk_dmafinished(void)
  #if DISK_DEBUG_X
  	write_log("dma finished %d %08x\n", floppy[0].mfmpos, M68K_GETPC);
  #endif
@@ -39,7 +39,7 @@ Index: demoscene-toolchain/submodules/amiberry/src/disk.cpp
  }
  
  static void fetchnextrevolution (drive *drv)
-@@ -4989,6 +4990,10 @@ static void DSKLEN_2(uae_u16 v, int hpos
+@@ -4998,6 +4999,10 @@ static void DSKLEN_2(uae_u16 v, int hpos
  		}
  	}
  
@@ -54,7 +54,7 @@ Index: demoscene-toolchain/submodules/amiberry/src/include/debug.h
 ===================================================================
 --- demoscene-toolchain.orig/submodules/amiberry/src/include/debug.h
 +++ demoscene-toolchain/submodules/amiberry/src/include/debug.h
-@@ -363,4 +363,13 @@ STATIC_INLINE void activate_debugger (vo
+@@ -394,4 +394,13 @@ STATIC_INLINE void activate_debugger (vo
  
  #endif /* DEBUGGER */
  
@@ -84,7 +84,7 @@ Index: demoscene-toolchain/submodules/amiberry/src/parser.cpp
 ===================================================================
 --- demoscene-toolchain.orig/submodules/amiberry/src/parser.cpp
 +++ demoscene-toolchain/submodules/amiberry/src/parser.cpp
-@@ -201,6 +201,24 @@ void doprinter (uae_u8 val)
+@@ -300,6 +300,24 @@ void doprinter (uae_u8 val)
  #endif
  }
  
@@ -113,16 +113,16 @@ Index: demoscene-toolchain/submodules/amiberry/src/uaelib.cpp
 ===================================================================
 --- demoscene-toolchain.orig/submodules/amiberry/src/uaelib.cpp
 +++ demoscene-toolchain/submodules/amiberry/src/uaelib.cpp
-@@ -27,6 +27,8 @@
+@@ -28,6 +28,8 @@
  #include "picasso96.h"
  #include "filesys.h"
  #include "inputdevice.h"
 +#include "parallel.h"
 +#include "custom.h"
  #ifdef AMIBERRY
- #include "target.h"
- #include "parser.h" // for midi ports
-@@ -783,6 +785,206 @@ static uae_u32 emulib_DebugDMA(uae_u32 m
+ #ifndef LIBRETRO
+ #include "mhi_host.h"
+@@ -1107,6 +1109,206 @@ static uae_u32 emulib_DebugDMA(uae_u32 m
    return 1;
  }
  
@@ -328,8 +328,8 @@ Index: demoscene-toolchain/submodules/amiberry/src/uaelib.cpp
 +
  static uae_u32 uaelib_demux_common(TrapContext *ctx, uae_u32 ARG0, uae_u32 ARG1, uae_u32 ARG2, uae_u32 ARG3, uae_u32 ARG4, uae_u32 ARG5)
  {
- 	write_log("%ld\n",ARG0);
-@@ -809,6 +1011,7 @@ static uae_u32 uaelib_demux_common(TrapC
+ #ifdef AMIBERRY
+@@ -1142,6 +1344,7 @@ static uae_u32 uaelib_demux_common(TrapC
  		case 40: return emulib_Log(ctx, ARG1);
  		case 41: return emulib_WarpMode(ARG1);
  		case 42: return emulib_DebugDMA(ARG1);

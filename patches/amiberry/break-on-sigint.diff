@@ -16,10 +16,10 @@ Index: demoscene-toolchain/submodules/amiberry/src/main.cpp
  #include <cstdlib>
  #include <cstring>
 +#include <csignal>
+ #include <vector>
  
  #ifdef USE_OLDGCC
- #include <experimental/filesystem>
-@@ -1572,6 +1573,33 @@ void check_error_sdl(const bool check, c
+@@ -2104,6 +2105,33 @@ void check_error_sdl(const bool check, c
  	}
  }
  
@@ -53,7 +53,7 @@ Index: demoscene-toolchain/submodules/amiberry/src/main.cpp
  static int real_main2 (int argc, TCHAR **argv)
  {
  	set_config_changed();
-@@ -1695,12 +1723,11 @@ static int real_main2 (int argc, TCHAR *
+@@ -2228,12 +2256,11 @@ static int real_main2 (int argc, TCHAR *
  	init_m68k (); /* must come after reset_frame_rate_hack (); */
  
  	if (graphics_init (true)) {

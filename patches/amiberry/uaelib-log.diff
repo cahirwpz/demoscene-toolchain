@@ -7,7 +7,7 @@ Index: demoscene-toolchain/submodules/amiberry/src/main.cpp
 ===================================================================
 --- demoscene-toolchain.orig/submodules/amiberry/src/main.cpp
 +++ demoscene-toolchain/submodules/amiberry/src/main.cpp
-@@ -1714,6 +1714,7 @@ static int real_main2 (int argc, TCHAR *
+@@ -2280,6 +2280,7 @@ static int real_main2 (int argc, TCHAR *
  
  void real_main (int argc, TCHAR **argv)
  {
@@ -19,7 +19,7 @@ Index: demoscene-toolchain/submodules/amiberry/src/uaelib.cpp
 ===================================================================
 --- demoscene-toolchain.orig/submodules/amiberry/src/uaelib.cpp
 +++ demoscene-toolchain/submodules/amiberry/src/uaelib.cpp
-@@ -764,6 +764,8 @@ static uae_u32 uaelib_midi(TrapContext *
+@@ -1088,6 +1088,8 @@ static uae_u32 uaelib_midi(TrapContext *
  
  #endif //AMIBERRY
  
@@ -27,8 +27,8 @@ Index: demoscene-toolchain/submodules/amiberry/src/uaelib.cpp
 +
  static uae_u32 uaelib_demux_common(TrapContext *ctx, uae_u32 ARG0, uae_u32 ARG1, uae_u32 ARG2, uae_u32 ARG3, uae_u32 ARG4, uae_u32 ARG5)
  {
- 	write_log("%ld\n",ARG0);
-@@ -787,6 +789,8 @@ static uae_u32 uaelib_demux_common(TrapC
+ #ifdef AMIBERRY
+@@ -1120,6 +1122,8 @@ static uae_u32 uaelib_demux_common(TrapC
  		case 14: return emulib_GetDisk(ctx, ARG1, ARG2);
  		case 15: return emulib_Debug();
  

@@ -12,35 +12,10 @@ import logging
 import platform
 import sys
 
-from common import (
-    setvar,
-    execute,
-    rmtree,
-    remove,
-    configure,
-    unpack,
-    path,
-    panic,
-    mkdir,
-    env,
-    make,
-    touch,
-    patch,
-    require_header,
-    copy,
-    cwd,
-    recipe,
-    find_executable,
-    textfile,
-    chmod,
-    copytree,
-    move,
-    find,
-    fetch,
-    fill_in,
-    exists,
-    join,
-)
+from common import chmod, configure, copy, copytree, cwd, env, execute, exists, fetch
+from common import fill_in, find, find_executable, join, make, mkdir, move, panic, patch
+from common import path, recipe, remove, require_header, rmtree, setvar, textfile, touch
+from common import unpack
 from packages import PACKAGES, PACKAGE_VARS, resolve_package
 
 

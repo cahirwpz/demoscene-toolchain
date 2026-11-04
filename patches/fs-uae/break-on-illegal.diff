@@ -1,3 +1,9 @@
+Break into the debugger on an ILLEGAL instruction executed outside ROM.
+
+In op_illg(), opcode 0x4AFC (ILLEGAL) with inrom == 0 steps past the
+instruction and calls activate_debugger(), letting guest code trigger a
+debugger break by planting an ILLEGAL opcode.
+
 Index: demoscene-toolchain/submodules/fs-uae/src/newcpu.cpp
 ===================================================================
 --- demoscene-toolchain.orig/submodules/fs-uae/src/newcpu.cpp

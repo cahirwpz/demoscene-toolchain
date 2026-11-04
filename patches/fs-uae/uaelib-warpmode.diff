@@ -1,3 +1,8 @@
+Add uaelib trap 41 (WarpMode) to toggle emulator warp mode from the guest.
+
+emulib_WarpMode(mode) calls fsemu_control_set_warp(), letting Amiga code
+turn turbo/warp emulation on and off.
+
 Index: demoscene-toolchain/submodules/fs-uae/src/uaelib.cpp
 ===================================================================
 --- demoscene-toolchain.orig/submodules/fs-uae/src/uaelib.cpp

@@ -1,3 +1,8 @@
+Disable Nagle's algorithm on serial-over-TCP connections.
+
+Calls slirp_socket_set_nodelay() (TCP_NODELAY) on an accepted serial TCP
+connection to reduce latency.
+
 Index: demoscene-toolchain/submodules/fs-uae/src/od-fs/parser.cpp
 ===================================================================
 --- demoscene-toolchain.orig/submodules/fs-uae/src/od-fs/parser.cpp

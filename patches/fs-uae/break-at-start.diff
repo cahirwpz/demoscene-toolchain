@@ -1,3 +1,12 @@
+Make FS-UAE break into the debugger at startup when use_debugger is set.
+
+At boot main.cpp calls activate_debugger() only if
+currprefs.start_debugger && debuggable(). Stock FS-UAE stubs debuggable()
+to 0, so this never fires. This patch makes debuggable() return 1 and
+forwards the FS-UAE front-end "use_debugger" config key into the core
+option of the same name (cfgfile maps it to start_debugger), so both
+conditions become reachable.
+
 Index: demoscene-toolchain/submodules/fs-uae/src/fsuae/fsuae-main.c
 ===================================================================
 --- demoscene-toolchain.orig/submodules/fs-uae/src/fsuae/fsuae-main.c

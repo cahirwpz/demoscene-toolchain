@@ -209,14 +209,13 @@ def prepare_build_env():
     # On Debian-based systems check upfront that every development package the
     # build relies on is installed, so a missing library fails fast with an
     # apt-get hint instead of a cryptic error deep inside the amiberry build.
-    # Keep the Dockerfile and the README package list in sync with this one.
+    # Keep the Dockerfile package list in sync with this one.
     require_packages(
         "libsdl2-dev",
         "libsdl2-ttf-dev",
         "libpng-dev",
         "libncurses-dev",
         "libglib2.0-dev",
-        "libopenal-dev",
         # amiberry
         "libsdl3-dev",
         "libsdl3-image-dev",

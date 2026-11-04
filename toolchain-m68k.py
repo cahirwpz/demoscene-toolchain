@@ -7,6 +7,7 @@ from glob import glob
 from logging import info, getLogger
 from os import environ
 import argparse
+import hashlib
 import logging
 import platform
 import sys
@@ -31,8 +32,9 @@ URLS = \
    ('https://github.com/emmanuel-marty/lzsa/archive/refs/tags/1.4.1.tar.gz',
     'lzsa-1.4.1.tar.gz'),
    'https://ftp.gnu.org/old-gnu/gnu-0.2/src/flex-2.5.4.tar.gz',
-   ('http://hp.alinea-computer.de/AmigaOS/NDK39.lha', 'NDK_3.9.lha'),
-   ('http://phoenix.owl.de/tags/vasm1_9c.tar.gz', 'vasm.tar.gz')]
+   ('https://aminet.net/dev/misc/NDK3.2.lha', 'NDK3.2R4.lha',
+    '96cabd4ad683dced632e147bf86dee0f50dcb1254386216c25c362916a6409bb'),
+   'http://phoenix.owl.de/tags/vasm2_0f.tar.gz']
 
 
 from common import (setvar, execute, rmtree, configure, unpack, path, panic,
@@ -51,11 +53,11 @@ def prepare_target():
           'ndk/lib', 'ndk/lib/fd', 'ndk/lib/sfd')
 
 
-@recipe('vasm-install')
+@recipe('{vasm}-install')
 def install_vasm():
   info('installing vasm')
 
-  copy('{build}/vasm/vasmm68k_mot', '{prefix}/{target}/bin')
+  copy('{build}/{vasm}/vasmm68k_mot', '{prefix}/{target}/bin')
   vasm = textfile(
     '#!/bin/sh',
     '',
@@ -68,42 +70,14 @@ def install_vasm():
 def install_ndk():
   info('installing ndk')
 
-  copytree('{sources}/{NDK}/Include/include_h', '{prefix}/{target}/ndk/include')
-  copytree('{sources}/{NDK}/Include/include_i', '{prefix}/{target}/ndk/include')
-  copytree('{sources}/{NDK}/Include/fd', '{prefix}/{target}/ndk/lib/fd')
-  copytree('{sources}/{NDK}/Include/sfd', '{prefix}/{target}/ndk/lib/sfd')
-  copytree('{sources}/{NDK}/Include/linker_libs', '{prefix}/{target}/ndk/lib',
+  # NDK 3.2 ships GCC proto/ and inline/ headers and lvo/ files.
+  copytree('{sources}/{NDK}/Include_H', '{prefix}/{target}/ndk/include')
+  copytree('{sources}/{NDK}/Include_I', '{prefix}/{target}/ndk/include')
+  copytree('{sources}/{NDK}/FD', '{prefix}/{target}/ndk/lib/fd')
+  copytree('{sources}/{NDK}/SFD', '{prefix}/{target}/ndk/lib/sfd')
+  copytree('{sources}/{NDK}/lib', '{prefix}/{target}/ndk/lib',
            exclude=['README'])
-  copytree('{sources}/{NDK}/Documentation/Autodocs', '{prefix}/{target}/ndk/doc')
-
-  for name in find('{prefix}/{target}/ndk/lib/sfd', include=['*.sfd']):
-    base = path.basename(name).split('_')[0]
-
-    execute('sfdc', '--target=m68k-amigaos', '--mode=proto',
-            '--output={prefix}/{target}/ndk/include/proto/%s.h' % base, name)
-    execute('sfdc', '--target=m68k-amigaos', '--mode=macros',
-            '--output={prefix}/{target}/ndk/include/inline/%s.h' % base, name)
-    execute('sfdc', '--target=m68k-amigaos', '--mode=lvo',
-            '--output={prefix}/{target}/ndk/include/lvo/%s_lib.i' % base, name)
-
-
-@recipe('fd2sfd-install')
-def install_fd2sfd():
-  info('installing fd2sfd')
-
-  copy('{build}/fd2sfd/fd2sfd', '{prefix}/bin')
-  copy('{build}/fd2sfd/cross/share/{target}/alib.h',
-       '{prefix}/{target}/ndk/include/inline')
-
-
-@recipe('fd2pragma-install')
-def install_fd2pragma():
-  info('installing fd2pragma')
-
-  copy('{build}/fd2pragma/fd2pragma', '{prefix}/bin')
-  for header in ['macros.h', 'stubs.h']:
-      copy(path.join('{build}/fd2pragma/Include/inline', header),
-           '{prefix}/{target}/ndk/include/inline')
+  copytree('{sources}/{NDK}/Autodocs', '{prefix}/{target}/ndk/doc')
 
 
 @recipe('shrinkler-install')
@@ -157,11 +131,17 @@ def touch_genfiles(dst):
 def download():
   with cwd('{archives}'):
     for url in URLS:
+      sha256 = None
       if type(url) is tuple:
-        url, name = url[0], url[1]
+        url, name, sha256 = (url + (None,))[:3]
       else:
         name = path.basename(url)
       fetch(name, url)
+      if sha256 is not None:
+        with open(name, 'rb') as f:
+          digest = hashlib.sha256(f.read()).hexdigest()
+        if digest != sha256:
+          panic('"%s" has SHA-256 %s, expected %s!', name, digest, sha256)
 
   execute('git', 'submodule', 'init');
   execute('git', 'submodule', 'update');
@@ -218,7 +198,6 @@ def build():
   """
 
   find_executable('perl')
-  find_executable('pod2text')
   find_executable('pod2man')
   find_executable('gperf')
   find_executable('patch')
@@ -236,52 +215,62 @@ def build():
 
   unpack('{automake}')
 
-  unpack('{m4}')
-  patch('{m4}')
-  configure('{m4}', '--prefix={host}')
-  make('{m4}', parallel=True)
-  make('{m4}', 'install')
+  """
+  Legacy host tools (and gcc 2.95.3 below) predate C23 and the stricter
+  diagnostics of gcc >= 14 (implicit declarations, K&R prototypes). This also
+  covers gmp, whose configure probes call K&R-declared functions.
+  """
+  CCLEGACY = ' '.join([CC, '-std=gnu17'])
 
-  unpack('{gawk}')
-  update_autotools('{sources}/{gawk}')
-  patch('{gawk}')
-  configure('{gawk}', '--prefix={host}')
-  make('{gawk}', parallel=True)
-  make('{gawk}', 'install')
+  with env(CC=CCLEGACY):
+    unpack('{m4}')
+    patch('{m4}')
+    configure('{m4}', '--prefix={host}')
+    make('{m4}', parallel=True)
+    make('{m4}', 'install')
 
-  unpack('{flex}')
-  patch('{flex}')
-  configure('{flex}', '--prefix={host}')
-  make('{flex}')
-  make('{flex}', 'install')
+    unpack('{gawk}')
+    update_autotools('{sources}/{gawk}')
+    patch('{gawk}')
+    configure('{gawk}', '--prefix={host}')
+    make('{gawk}', parallel=True)
+    make('{gawk}', 'install')
 
-  unpack('{bison}')
-  update_autotools('{sources}/{bison}/config')
-  patch('{bison}')
-  configure('{bison}', '--prefix={host}')
-  make('{bison}', parallel=True)
-  make('{bison}', 'install')
+    unpack('{flex}')
+    patch('{flex}')
+    # flex calls exit() without including <stdlib.h>
+    with env(CC=CCLEGACY + ' -Wno-error=implicit-function-declaration'):
+      configure('{flex}', '--prefix={host}')
+      make('{flex}')
+      make('{flex}', 'install')
 
-  unpack('{texinfo}')
-  patch('{texinfo}')
-  update_autotools('{sources}/{texinfo}/build-aux')
-  configure('{texinfo}', '--prefix={host}')
-  make('{texinfo}', parallel=True)
-  make('{texinfo}', 'install')
+    unpack('{bison}')
+    update_autotools('{sources}/{bison}/config')
+    patch('{bison}')
+    configure('{bison}', '--prefix={host}')
+    make('{bison}', parallel=True)
+    make('{bison}', 'install')
 
-  unpack('{autoconf}')
-  update_autotools('{sources}/{autoconf}')
-  configure('{autoconf}', '--prefix={host}')
-  make('{autoconf}', parallel=True)
-  make('{autoconf}', 'install')
+    unpack('{texinfo}')
+    patch('{texinfo}')
+    update_autotools('{sources}/{texinfo}/build-aux')
+    configure('{texinfo}', '--prefix={host}')
+    make('{texinfo}', parallel=True)
+    make('{texinfo}', 'install')
 
-  unpack('{gmp}')
-  configure('{gmp}',
-            '--prefix={host}',
-            '--disable-shared',
-            '--enable-static')
-  make('{gmp}', parallel=True)
-  make('{gmp}', 'install')
+    unpack('{autoconf}')
+    update_autotools('{sources}/{autoconf}')
+    configure('{autoconf}', '--prefix={host}')
+    make('{autoconf}', parallel=True)
+    make('{autoconf}', 'install')
+
+    unpack('{gmp}')
+    configure('{gmp}',
+              '--prefix={host}',
+              '--disable-shared',
+              '--enable-static')
+    make('{gmp}', parallel=True)
+    make('{gmp}', 'install')
 
   unpack('{mpfr}')
   configure('{mpfr}',
@@ -313,26 +302,11 @@ def build():
 
   prepare_target()
 
-  unpack('vasm', work_dir='{build}')
-  make('vasm', CPU='m68k', SYNTAX='mot')
+  unpack('{vasm}', work_dir='{build}', top_dir='vasm')
+  make('{vasm}', CPU='m68k', SYNTAX='mot')
   install_vasm()
 
-  update_autotools('{submodules}/fd2sfd')
-  unpack('fd2sfd', work_dir='{build}')
-  configure('fd2sfd', '--prefix={prefix}', from_dir='{build}/fd2sfd')
-  make('fd2sfd')
-  install_fd2sfd()
-
-  unpack('fd2pragma', work_dir='{build}')
-  make('fd2pragma')
-  install_fd2pragma()
-
-  unpack('sfdc')
-  configure('sfdc', '--prefix={prefix}', copy_source=True)
-  make('sfdc')
-  make('sfdc', 'install')
-
-  unpack('{NDK}')
+  unpack('{NDK}', top_dir='.')
   patch('{NDK}')
   install_ndk()
 
@@ -361,7 +335,11 @@ def build():
     make('{binutils}', 'install-ld')
     make('{binutils}', 'install-gdb')
 
-  CCOLD = ' '.join([CC, '-std=gnu99'])
+  # gcc >= 14 turned these into errors; gcc 2.95.3 sources trip all three.
+  CCOLD = ' '.join([CC, '-std=gnu99',
+                    '-Wno-error=implicit-int',
+                    '-Wno-error=implicit-function-declaration',
+                    '-Wno-error=incompatible-pointer-types'])
   CXXOLD = ' '.join([CXX, '-std=gnu++11'])
 
   with env(CC=CCOLD, CXX=CXXOLD, CFLAGS=FLAGS, CXXFLAGS=FLAGS):
@@ -488,7 +466,7 @@ if __name__ == "__main__":
          mpfr='mpfr-3.1.6',
          mpc='mpc-1.0.3',
          isl='isl-0.18',
-         NDK='NDK_3.9',
+         NDK='NDK3.2R4',
          binutils='binutils-gdb',
          fsuae='fs-uae',
          gcc='gcc-2.95.3',
@@ -496,6 +474,7 @@ if __name__ == "__main__":
          shrinkler='Shrinkler-4.7',
          salvador='salvador-1.4.2',
          lzsa='lzsa-1.4.1',
+         vasm='vasm2_0f',
          target='m68k-amigaos',
          python=sys.executable,
          patches=path.join('{top}', 'patches'),

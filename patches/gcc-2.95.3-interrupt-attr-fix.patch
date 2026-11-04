@@ -1,0 +1,14 @@
+Index: demoscene-toolchain/submodules/gcc-2.95.3/gcc/function.c
+===================================================================
+--- demoscene-toolchain.orig/submodules/gcc-2.95.3/gcc/function.c
++++ demoscene-toolchain/submodules/gcc-2.95.3/gcc/function.c
+@@ -5135,7 +5135,8 @@ assign_parms (fndecl, second_time)
+ 						 current_function_args_size);
+ 
+   current_function_is_interrupt = lookup_attribute ("interrupt_handler",
+-                                                    TYPE_ATTRIBUTES (TREE_TYPE (fndecl)));
++                                                    TYPE_ATTRIBUTES (TREE_TYPE (fndecl)))
++                                  != NULL_TREE;
+ 
+   /* For stdarg.h function, save info about
+      regs and stack space used by the named args.  */

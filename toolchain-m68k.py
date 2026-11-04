@@ -155,6 +155,7 @@ from common import (  # noqa: E402
     move,
     find,
     fetch,
+    fill_in,
     exists,
     join,
 )
@@ -586,21 +587,49 @@ def phase_compressors():
 # Ordered build phases. `build` with no arguments runs them all in order; named
 # arguments (e.g. "build fs-uae") run only those phases, assuming their
 # dependencies were already built. Stamps still gate the steps inside each phase.
+# The third field lists the stamps "rebuild <component>" deletes: the make and
+# install steps of everything the phase compiles (not configure/unpack).
 BUILD_PHASES = [
-    ("download", phase_download),
-    ("host-tools", phase_host_tools),
-    ("gcc-deps", phase_gcc_deps),
-    ("target", phase_target),
-    ("binutils", phase_binutils),
-    ("gcc", phase_gcc),
-    ("gcc-bebbo", phase_gcc_bebbo),
-    ("fs-uae", phase_fs_uae),
-    ("compressors", phase_compressors),
+    ("download", phase_download, []),
+    (
+        "host-tools",
+        phase_host_tools,
+        [
+            "{m4}-make*",
+            "{gawk}-make*",
+            "{flex}-make*",
+            "{bison}-make*",
+            "{texinfo}-make*",
+            "{autoconf}-make*",
+        ],
+    ),
+    (
+        "gcc-deps",
+        phase_gcc_deps,
+        ["{gmp}-make*", "{mpfr}-make*", "{mpc}-make*", "{isl}-make*"],
+    ),
+    ("target", phase_target, ["{vasm}-make*", "{vasm}-install", "{NDK}-install"]),
+    ("binutils", phase_binutils, ["{binutils}-make*"]),
+    ("gcc", phase_gcc, ["{gcc}-make*"]),
+    ("gcc-bebbo", phase_gcc_bebbo, ["{gcc_bebbo}-make*"]),
+    ("fs-uae", phase_fs_uae, ["{fsuae}-make*"]),
+    (
+        "compressors",
+        phase_compressors,
+        [
+            "{shrinkler}-make*",
+            "shrinkler-install",
+            "{salvador}-make*",
+            "salvador-install",
+            "{lzsa}-make*",
+            "lzsa-install",
+        ],
+    ),
 ]
 
 
 def _component_names():
-    return [name for name, _ in BUILD_PHASES]
+    return [name for name, _, _ in BUILD_PHASES]
 
 
 def _validate_components(names):
@@ -619,20 +648,32 @@ def build(*names):
     available = _validate_components(names)
     selected = set(names) if names else set(available)
     prepare_build_env()
-    for name, fn in BUILD_PHASES:
+    for name, fn, _ in BUILD_PHASES:
         if name in selected:
             fn()
 
 
 def rebuild(*names):
+    rebuildable = [name for name, _, stamps in BUILD_PHASES if stamps]
     if not names:
         panic(
             "rebuild requires at least one build component; available: %s",
-            ", ".join(_component_names()),
+            ", ".join(rebuildable),
         )
     _validate_components(names)
-    for name in names:
-        remove(glob(join("{stamps}", f"{name}-make*")))
+    fixed = [n for n in names if n not in rebuildable]
+    if fixed:
+        panic(
+            "nothing to rebuild in: %s; available: %s",
+            ", ".join(fixed),
+            ", ".join(rebuildable),
+        )
+    for name, _, stamps in BUILD_PHASES:
+        if name in names:
+            for pattern in stamps:
+                # Same name mangling as the recipe decorator applies to stamps.
+                stamp = fill_in(pattern).replace("_", "-").replace("/", "-")
+                remove(glob(join("{stamps}", stamp)))
     build(*names)
 
 
